@@ -18,6 +18,9 @@ with open(os.path.join('processeddata', 'valid.txt'), 'rb') as f:
 batch_size = 32
 epoch_count = 10
 
+question_dim = 32
+obj_dim = 32
+
 sess = tf.Session()
 
 testTensorA = tf.constant([[[1, 2, 3, 4, 5, 6, 7], [8, 9, 10, 11, 12, 13, 14]]])
@@ -83,269 +86,314 @@ def getTripleCombinations(inputTensor):#input shape=(batch_size, obj_count, obj_
     return result
 
 def buildRN_I(objects, question):#objects shape=(batch_size, obj_count, obj_dim), question shape=(batch_size, question_dim)
-    def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, obj_dim)
+    #model parameters
+    g_dim = 256
+    f_dim = 256
+
+    def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
         layerInput = tf.concat([objPairs, question], 1)
-        return tf.layers.dense(layerInput, 256)#TODO: introduce constant for units count and add more layers
+        return tf.layers.dense(layerInput, g_dim)#TODO: introduce constant for units count and add more layers
 
     def build_f(gSum, question):#gSum shape=(batch_size, g_dim)
         layerInput = gSum
-        return tf.layers.dense(layerInput, 256)#TODO: introduce constant for units count and add more layers
+        return tf.layers.dense(layerInput, f_dim)#TODO: introduce constant for units count and add more layers
 
     inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
-    questionShape = tf.shape(question)#[0] is batch_size, [1] is question_dim
+    #questionShape = tf.shape(question)#[0] is batch_size, [1] is question_dim
     objPairs2D = getCombinations(objects)
-    objPairs = tf.reshape(objPairs2D, shape=(-1, inputShape[2]))
+    objPairs = tf.reshape(objPairs2D, shape=(-1, 2*obj_dim))
     questionRep = tf.tile(question, [1, inputShape[1]*inputShape[1]])
-    questionRep = tf.reshape(questionRep, shape=(-1, questionShape[1]))
+    questionRep = tf.reshape(questionRep, shape=(-1, question_dim))
     gResult = build_g(objPairs, questionRep)
-    gResult1D = tf.reshape(gResult, shape=(inputShape[0], inputShape[1]*inputShape[1], -1))
+    gResult1D = tf.reshape(gResult, shape=(batch_size, -1, g_dim))#shape=(batch_size, obj_count*obj_count, g_dim)
     gSum = tf.reduce_sum(gResult1D, axis=1)
     return build_f(gSum, question)
 
 def buildRN_II(objects, question):#objects shape=(batch_size, obj_count, obj_dim), question shape=(batch_size, question_dim)
-    def build_g(objTriples, question):#objPairs shape=(batch_size*obj_count*obj_count*obj_count, obj_dim)
+    #model parameters
+    g_dim = 256
+    f_dim = 256
+
+    def build_g(objTriples, question):#objPairs shape=(batch_size*obj_count*obj_count*obj_count, 3*obj_dim)
         layerInput = tf.concat([objTriples, question], 1)
-        return tf.layers.dense(layerInput, 256)#TODO: introduce constant for units count and add more layers
+        return tf.layers.dense(layerInput, g_dim)#TODO: introduce constant for units count and add more layers
 
     def build_f(gSum, question):#gSum shape=(batch_size, g_dim)
         layerInput = gSum
-        return tf.layers.dense(layerInput, 256)#TODO: introduce constant for units count and add more layers
+        return tf.layers.dense(layerInput, f_dim)#TODO: introduce constant for units count and add more layers
 
     inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
-    questionShape = tf.shape(question)#[0] is batch_size, [1] is question_dim
+    #questionShape = tf.shape(question)#[0] is batch_size, [1] is question_dim
     objTriples3D = getTripleCombinations(objects)
-    objTriples = tf.reshape(objTriples3D, shape=(-1, inputShape[2]))
+    objTriples = tf.reshape(objTriples3D, shape=(-1, 3*obj_dim))
     questionRep = tf.tile(question, [1, inputShape[1]*inputShape[1]*inputShape[1]])
-    questionRep = tf.reshape(questionRep, shape=(-1, questionShape[1]))
+    questionRep = tf.reshape(questionRep, shape=(-1, question_dim))
     gResult = build_g(objTriples, questionRep)
-    gResult1D = tf.reshape(gResult, shape=(inputShape[0], inputShape[1]*inputShape[1]*inputShape[1], -1))
+    gResult1D = tf.reshape(gResult, shape=(batch_size, -1, g_dim))#shape=(batch_size, obj_count*obj_count*obj_count, g_dim)
     gSum = tf.reduce_sum(gResult1D, axis=1)
     return build_f(gSum, question)
 
 def buildRN_III(objects, question):#objects shape=(batch_size, obj_count, obj_dim), question shape=(batch_size, question_dim)
-    def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, obj_dim)
+    #model parameters
+    h_dim = 256
+    g_dim = 256
+    f_dim = 256
+
+    def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
         layerInput = tf.concat([objPairs, question], 1)
-        return tf.layers.dense(layerInput, 256)#TODO: introduce constant for units count and add more layers
+        return tf.layers.dense(layerInput, h_dim)#TODO: introduce constant for units count and add more layers
 
     def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count*obj_count, h_dim+obj_dim)
         layerInput = tf.concat([objPairs, question], 1)
-        return tf.layers.dense(layerInput, 256)#TODO: introduce constant for units count and add more layers
+        return tf.layers.dense(layerInput, g_dim)#TODO: introduce constant for units count and add more layers
 
     def build_f(gSum, question):#gSum shape=(batch_size, g_dim)
         layerInput = gSum
-        return tf.layers.dense(layerInput, 256)#TODO: introduce constant for units count and add more layers
+        return tf.layers.dense(layerInput, f_dim)#TODO: introduce constant for units count and add more layers
 
     inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
-    questionShape = tf.shape(question)#[0] is batch_size, [1] is question_dim
+    #questionShape = tf.shape(question)#[0] is batch_size, [1] is question_dim
     objPairs2D = getCombinations(objects)
-    objPairs = tf.reshape(objPairs2D, shape=(-1, inputShape[2]))
+    objPairs = tf.reshape(objPairs2D, shape=(-1, 2*obj_dim))
     questionRep = tf.tile(question, [1, inputShape[1]*inputShape[1]])
-    questionRep = tf.reshape(questionRep, shape=(-1, questionShape[1]))
+    questionRep = tf.reshape(questionRep, shape=(-1, question_dim))
     hResult = build_h(objPairs, questionRep)
-    hResult1D = tf.reshape(gResult, shape=(inputShape[0], inputShape[1]*inputShape[1], -1))
-    intermedShape = tf.shape(hResult1D)#[0] is batch_size, [1] is obj_count*obj_count, [2] is h_dim
+    hResult1D = tf.reshape(gResult, shape=(batch_size, inputShape[1]*inputShape[1], h_dim))
+    #intermedShape = tf.shape(hResult1D)#[0] is batch_size, [1] is obj_count*obj_count, [2] is h_dim
     intermedObjPairs2D = getHeteroCombinations(hResult1D, objects)
-    intermedObjPairs = tf.reshape(intermedObjPairs2D, shape=(-1, intermedShape[2]))
+    intermedObjPairs = tf.reshape(intermedObjPairs2D, shape=(-1, h_dim+obj_dim))
     questionRep3 = tf.tile(question, [1, inputShape[1]*inputShape[1]*inputShape[1]])
-    questionRep3 = tf.reshape(questionRep3, shape=(-1, questionShape[1]))
+    questionRep3 = tf.reshape(questionRep3, shape=(-1, question_dim))
     gResult = build_g(intermedObjPairs, questionRep3)
-    gResult1D = tf.reshape(gResult, shape=(inputShape[0], inputShape[1]*inputShape[1]*inputShape[1], -1))
+    gResult1D = tf.reshape(gResult, shape=(batch_size, inputShape[1]*inputShape[1]*inputShape[1], g_dim))#shape=(batch_size, obj_count*obj_count*obj_count, g_dim)
     gSum = tf.reduce_sum(gResult1D, axis=1)
     return build_f(gSum, question)
 
 def buildRN_IV(objects, question):#objects shape=(batch_size, obj_count, obj_dim), question shape=(batch_size, question_dim)
-    def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, obj_dim)
+    #model parameters
+    h_dim = 256
+    g_dim = 256
+    f_dim = 256
+
+    def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
         layerInput = tf.concat([objPairs, question], 1)
-        return tf.layers.dense(layerInput, 256)#TODO: introduce constant for units count and add more layers
+        return tf.layers.dense(layerInput, h_dim)#TODO: introduce constant for units count and add more layers
 
     def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count*obj_count, 2*h_dim)
         layerInput = tf.concat([objPairs, question], 1)
-        return tf.layers.dense(layerInput, 256)#TODO: introduce constant for units count and add more layers
+        return tf.layers.dense(layerInput, g_dim)#TODO: introduce constant for units count and add more layers
 
     def build_f(gSum, question):#gSum shape=(batch_size, g_dim)
         layerInput = gSum
-        return tf.layers.dense(layerInput, 256)#TODO: introduce constant for units count and add more layers
+        return tf.layers.dense(layerInput, f_dim)#TODO: introduce constant for units count and add more layers
 
     inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
-    questionShape = tf.shape(question)#[0] is batch_size, [1] is question_dim
+    #questionShape = tf.shape(question)#[0] is batch_size, [1] is question_dim
     objPairs2D = getCombinations(objects)
-    objPairs = tf.reshape(objPairs2D, shape=(-1, inputShape[2]))
+    objPairs = tf.reshape(objPairs2D, shape=(-1, 2*obj_dim))
     questionRep = tf.tile(question, [1, inputShape[1]*inputShape[1]])
-    questionRep = tf.reshape(questionRep, shape=(-1, questionShape[1]))
+    questionRep = tf.reshape(questionRep, shape=(-1, question_dim))
     hResult = build_h(objPairs, questionRep)
-    hResult2D = tf.reshape(gResult, shape=(inputShape[0], inputShape[1], inputShape[1], -1))
+    hResult2D = tf.reshape(hResult, shape=(batch_size, inputShape[1], inputShape[1], h_dim))
     intermedObjPairs3D = getTransitiveCombine(hResult2D)
-    intermedShape = tf.shape(intermedObjPairs3D)#[0] is batch_size, [1] is obj_count, [2] is obj_count, [3] is obj_count, [4] is 2*h_dim
-    intermedObjPairs = tf.reshape(intermedObjPairs3D, shape=(-1, intermedShape[4]))
+    #intermedShape = tf.shape(intermedObjPairs3D)#[0] is batch_size, [1] is obj_count, [2] is obj_count, [3] is obj_count, [4] is 2*h_dim
+    intermedObjPairs = tf.reshape(intermedObjPairs3D, shape=(-1, 2*h_dim))
     questionRep3 = tf.tile(question, [1, inputShape[1]*inputShape[1]*inputShape[1]])
-    questionRep3 = tf.reshape(questionRep3, shape=(-1, questionShape[1]))
+    questionRep3 = tf.reshape(questionRep3, shape=(-1, question_dim))
     gResult = build_g(intermedObjPairs, questionRep3)
-    gResult1D = tf.reshape(gResult, shape=(inputShape[0], inputShape[1]*inputShape[1]*inputShape[1], -1))
+    gResult1D = tf.reshape(gResult, shape=(batch_size, inputShape[1]*inputShape[1]*inputShape[1], g_dim))#shape=(batch_size, obj_count*obj_count*obj_count, g_dim)
     gSum = tf.reduce_sum(gResult1D, axis=1)
     return build_f(gSum, question)
 
 def buildRN_V(objects, question):#objects shape=(batch_size, obj_count, obj_dim), question shape=(batch_size, question_dim)
-    def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, obj_dim)
+    #model parameters
+    h_dim = 256
+    g_dim = 256
+    f_inner_dim = 256
+    f_dim = 256
+
+    def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
         layerInput = tf.concat([objPairs, question], 1)
-        return tf.layers.dense(layerInput, 256)#TODO: introduce constant for units count and add more layers
+        return tf.layers.dense(layerInput, h_dim)#TODO: introduce constant for units count and add more layers
 
     def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count*obj_count, 2*h_dim)
         layerInput = tf.concat([objPairs, question], 1)
-        return tf.layers.dense(layerInput, 256)#TODO: introduce constant for units count and add more layers
+        return tf.layers.dense(layerInput, g_dim)#TODO: introduce constant for units count and add more layers
 
     def build_f_inner(gSum):#gSum2D shape=(batch_size*obj_count*obj_count, g_dim)
-        return tf.layers.dense(gSum, 256)#TODO: introduce constant for units count and add more layers
+        return tf.layers.dense(gSum, f_inner_dim)#TODO: introduce constant for units count and add more layers
 
     def build_f(gSum, question):#gSum shape=(batch_size, g_dim)
         layerInput = gSum
-        return tf.layers.dense(layerInput, 256)#TODO: introduce constant for units count and add more layers
+        return tf.layers.dense(layerInput, f_dim)#TODO: introduce constant for units count and add more layers
 
     inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
-    questionShape = tf.shape(question)#[0] is batch_size, [1] is question_dim
+    #questionShape = tf.shape(question)#[0] is batch_size, [1] is question_dim
     objPairs2D = getCombinations(objects)
     objPairs = tf.reshape(objPairs2D, shape=(-1, inputShape[2]))
     questionRep = tf.tile(question, [1, inputShape[1]*inputShape[1]])
-    questionRep = tf.reshape(questionRep, shape=(-1, questionShape[1]))
+    questionRep = tf.reshape(questionRep, shape=(-1, question_dim))
     hResult = build_h(objPairs, questionRep)
     hResult2D = tf.reshape(gResult, shape=(inputShape[0], inputShape[1], inputShape[1], -1))
     intermedObjPairs3D = getTransitiveCombine(hResult2D)
-    intermedShape = tf.shape(intermedObjPairs3D)#[0] is batch_size, [1] is obj_count, [2] is obj_count, [3] is obj_count, [4] is 2*h_dim
-    intermedObjPairs = tf.reshape(intermedObjPairs3D, shape=(-1, intermedShape[4]))
+    #intermedShape = tf.shape(intermedObjPairs3D)#[0] is batch_size, [1] is obj_count, [2] is obj_count, [3] is obj_count, [4] is 2*h_dim
+    intermedObjPairs = tf.reshape(intermedObjPairs3D, shape=(-1, 2*h_dim))
     questionRep3 = tf.tile(question, [1, inputShape[1]*inputShape[1]*inputShape[1]])
-    questionRep3 = tf.reshape(questionRep3, shape=(-1, questionShape[1]))
+    questionRep3 = tf.reshape(questionRep3, shape=(-1, question_dim))
     gResult = build_g(intermedObjPairs, questionRep3)
-    gOutShape = tf.shape(gResult)#[0] is batch_size*obj_count*obj_count*obj_count, [1] is g_dim
-    gResult3D = tf.reshape(gResult, shape=(inputShape[0], inputShape[1], inputShape[1], inputShape[1], -1))
+    #gOutShape = tf.shape(gResult)#[0] is batch_size*obj_count*obj_count*obj_count, [1] is g_dim
+    gResult3D = tf.reshape(gResult, shape=(batch_size, inputShape[1], inputShape[1], inputShape[1], g_dim))
     gSum2D = tf.reduce_sum(gResult3D, axis=2)
-    gSum = tf.reshape(gSum2D, shape=(-1, gOutShape[1]))
+    gSum = tf.reshape(gSum2D, shape=(-1, g_dim))
     fInnerResult = build_f_inner(gSum)
-    fInnerResult1D = tf.reshape(fInnerResult, shape=(inputShape[0], inputShape[1]*inputShape[1], -1))
+    fInnerResult1D = tf.reshape(fInnerResult, shape=(batch_size, inputShape[1]*inputShape[1], f_inner_dim))
     fInnerSum = tf.reduce_sum(fInnerResult1D, axis=1)
     return build_f(fInnerSum, question)
 
 def buildRN_VI(objects, question):#objects shape=(batch_size, obj_count, obj_dim), question shape=(batch_size, question_dim)
-    def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, obj_dim)
+    #model parameters
+    h_dim = 256
+    g_dim = 256
+    f_inner_dim = 256
+    f_dim = 256
+
+    def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
         layerInput = tf.concat([objPairs, question], 1)
-        return tf.layers.dense(layerInput, 256)#TODO: introduce constant for units count and add more layers
+        return tf.layers.dense(layerInput, h_dim)#TODO: introduce constant for units count and add more layers
 
     def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count*obj_count, 2*h_dim)
         layerInput = tf.concat([objPairs, question], 1)
-        return tf.layers.dense(layerInput, 256)#TODO: introduce constant for units count and add more layers
+        return tf.layers.dense(layerInput, g_dim)#TODO: introduce constant for units count and add more layers
 
     def build_f_inner(gSum):#gSum2D shape=(batch_size*obj_count, g_dim)
-        return tf.layers.dense(gSum, 256)#TODO: introduce constant for units count and add more layers
+        return tf.layers.dense(gSum, f_inner_dim)#TODO: introduce constant for units count and add more layers
 
     def build_f(gSum, question):#gSum shape=(batch_size, g_dim)
         layerInput = gSum
-        return tf.layers.dense(layerInput, 256)#TODO: introduce constant for units count and add more layers
+        return tf.layers.dense(layerInput, f_dim)#TODO: introduce constant for units count and add more layers
 
     inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
-    questionShape = tf.shape(question)#[0] is batch_size, [1] is question_dim
+    #questionShape = tf.shape(question)#[0] is batch_size, [1] is question_dim
     objPairs2D = getCombinations(objects)
-    objPairs = tf.reshape(objPairs2D, shape=(-1, inputShape[2]))
+    objPairs = tf.reshape(objPairs2D, shape=(-1, 2*obj_dim))
     questionRep = tf.tile(question, [1, inputShape[1]*inputShape[1]])
-    questionRep = tf.reshape(questionRep, shape=(-1, questionShape[1]))
+    questionRep = tf.reshape(questionRep, shape=(-1, question_dim))
     hResult = build_h(objPairs, questionRep)
-    hResult2D = tf.reshape(gResult, shape=(inputShape[0], inputShape[1], inputShape[1], -1))
+    hResult2D = tf.reshape(gResult, shape=(batch_size, inputShape[1], inputShape[1], -1))
     intermedObjPairs3D = getTransitiveCombine(hResult2D)
     intermedShape = tf.shape(intermedObjPairs3D)#[0] is batch_size, [1] is obj_count, [2] is obj_count, [3] is obj_count, [4] is 2*h_dim
     intermedObjPairs = tf.reshape(intermedObjPairs3D, shape=(-1, intermedShape[4]))
     questionRep3 = tf.tile(question, [1, inputShape[1]*inputShape[1]*inputShape[1]])
-    questionRep3 = tf.reshape(questionRep3, shape=(-1, questionShape[1]))
+    questionRep3 = tf.reshape(questionRep3, shape=(-1, question_dim))
     gResult = build_g(intermedObjPairs, questionRep3)
-    gOutShape = tf.shape(gResult)#[0] is batch_size*obj_count*obj_count*obj_count, [1] is g_dim
-    gResult3D = tf.reshape(gResult, shape=(inputShape[0], inputShape[1], inputShape[1], inputShape[1], -1))
+    #gOutShape = tf.shape(gResult)#[0] is batch_size*obj_count*obj_count*obj_count, [1] is g_dim
+    gResult3D = tf.reshape(gResult, shape=(batch_size, inputShape[1], inputShape[1], inputShape[1], g_dim))
     gSum1D = tf.reduce_sum(gResult3D, axis=[1,3])
-    gSum = tf.reshape(gSum1D, shape=(-1, gOutShape[1]))
+    gSum = tf.reshape(gSum1D, shape=(-1, g_dim))
     fInnerResult = build_f_inner(gSum)
-    fInnerResult1D = tf.reshape(fInnerResult, shape=(inputShape[0], inputShape[1], -1))
+    fInnerResult1D = tf.reshape(fInnerResult, shape=(batch_size, inputShape[1], f_inner_dim))
     fInnerSum = tf.reduce_sum(fInnerResult1D, axis=1)
     return build_f(fInnerSum, question)
 
 def buildRN_VII_jl(objects, question):#objects shape=(batch_size, obj_count, obj_dim), question shape=(batch_size, question_dim)
-    def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, obj_dim)
-        layerInput = tf.concat([objPairs, question], 1)
-        return tf.layers.dense(layerInput, 256)#TODO: introduce constant for units count and add more layers
+    #model parameters
+    h_dim = 256
+    g_dim = 256
+    f_dim = 256
 
-    def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, obj_dim)
+    def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
         layerInput = tf.concat([objPairs, question], 1)
-        return tf.layers.dense(layerInput, 256)#TODO: introduce constant for units count and add more layers
+        return tf.layers.dense(layerInput, g_dim)#TODO: introduce constant for units count and add more layers
+
+    def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*g_dim)
+        layerInput = tf.concat([objPairs, question], 1)
+        return tf.layers.dense(layerInput, h_dim)#TODO: introduce constant for units count and add more layers
 
     def build_f(hSum, question):#gSum shape=(batch_size, g_dim)
         layerInput = hSum
-        return tf.layers.dense(layerInput, 256)#TODO: introduce constant for units count and add more layers
+        return tf.layers.dense(layerInput, f_dim)#TODO: introduce constant for units count and add more layers
 
     inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
     objPairs2D = getCombinations(objects)
-    objPairs = tf.reshape(objPairs2D, shape=(-1, inputShape[2]))
+    objPairs = tf.reshape(objPairs2D, shape=(-1, 2*obj_dim))
     questionRep = tf.tile(question, [1, inputShape[1]*inputShape[1]])
-    questionRep = tf.reshape(questionRep, shape=(-1, questionShape[1]))
+    questionRep = tf.reshape(questionRep, shape=(-1, question_dim))
     gResult = build_g(objPairs, questionRep)
-    gResult2D = tf.reshape(gResult, shape=(inputShape[0], inputShape[1], inputShape[1], -1))
+    gResult2D = tf.reshape(gResult, shape=(batch_size, inputShape[1], inputShape[1], g_dim))
     gSumJ = tf.reduce_sum(gResult2D, axis=2)
     #gSumL = gSumJ # correct but unused variable in optimized version
-    intermedShape = tf.shape(gResult2D)#[0] is batch_size, [1] is obj_count, [2] is obj_count, [3] is g_dim
+    #intermedShape = tf.shape(gResult2D)#[0] is batch_size, [1] is obj_count, [2] is obj_count, [3] is g_dim
     #intermedObjPairs2D = getHeteroCombinations(gSumJ, gSumL)#naive, unoptimized - optimize using knowledge that gSumL=gSumJ instead:
     intermedObjPairs2D = getCombinations(gSumJ)#optimized version
-    intermedObjPairs = tf.reshape(intermedObjPairs2D, shape=(-1, intermedShape[3]))
+    intermedObjPairs = tf.reshape(intermedObjPairs2D, shape=(-1, 2*g_dim))
     hResult = build_h(intermedObjPairs, questionRep)
-    hResult1D = tf.reshape(hResult, shape=(inputShape[0], inputShape[1]*inputShape[1], -1))
+    hResult1D = tf.reshape(hResult, shape=(batch_size, inputShape[1]*inputShape[1], h_dim))
     hSum = tf.reduce_sum(hResult1D, axis=1)
     return build_f(hSum, question)
 
 def buildRN_VII_jk(objects, question):#objects shape=(batch_size, obj_count, obj_dim), question shape=(batch_size, question_dim)
-    def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, obj_dim)
-        layerInput = tf.concat([objPairs, question], 1)
-        return tf.layers.dense(layerInput, 256)#TODO: introduce constant for units count and add more layers
+    #model parameters
+    h_dim = 256
+    g_dim = 256
+    f_dim = 256
 
-    def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, obj_dim)
+    def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
         layerInput = tf.concat([objPairs, question], 1)
-        return tf.layers.dense(layerInput, 256)#TODO: introduce constant for units count and add more layers
+        return tf.layers.dense(layerInput, g_dim)#TODO: introduce constant for units count and add more layers
 
-    def build_f(hSum, question):#gSum shape=(batch_size, g_dim)
+    def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*g_dim)
+        layerInput = tf.concat([objPairs, question], 1)
+        return tf.layers.dense(layerInput, h_dim)#TODO: introduce constant for units count and add more layers
+
+    def build_f(hSum, question):#gSum shape=(batch_size, h_dim)
         layerInput = hSum
-        return tf.layers.dense(layerInput, 256)#TODO: introduce constant for units count and add more layers
+        return tf.layers.dense(layerInput, f_dim)#TODO: introduce constant for units count and add more layers
 
     inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
     objPairs2D = getCombinations(objects)
-    objPairs = tf.reshape(objPairs2D, shape=(-1, inputShape[2]))
+    objPairs = tf.reshape(objPairs2D, shape=(-1, 2*obj_dim))
     questionRep = tf.tile(question, [1, inputShape[1]*inputShape[1]])
-    questionRep = tf.reshape(questionRep, shape=(-1, questionShape[1]))
+    questionRep = tf.reshape(questionRep, shape=(-1, question_dim))
     gResult = build_g(objPairs, questionRep)
-    gResult2D = tf.reshape(gResult, shape=(inputShape[0], inputShape[1], inputShape[1], -1))
+    gResult2D = tf.reshape(gResult, shape=(batch_size, inputShape[1], inputShape[1], g_dim))
     gSumJ = tf.reduce_sum(gResult2D, axis=2)
     gSumK = tf.reduce_sum(gResult2D, axis=1)
-    intermedShape = tf.shape(gResult2D)#[0] is batch_size, [1] is obj_count, [2] is obj_count, [3] is g_dim
+    #intermedShape = tf.shape(gResult2D)#[0] is batch_size, [1] is obj_count, [2] is obj_count, [3] is g_dim
     intermedObjPairs2D = getHeteroCombinations(gSumJ, gSumK)
-    intermedObjPairs = tf.reshape(intermedObjPairs2D, shape=(-1, intermedShape[3]))
+    intermedObjPairs = tf.reshape(intermedObjPairs2D, shape=(-1, 2*g_dim))
     hResult = build_h(intermedObjPairs, questionRep)
-    hResult1D = tf.reshape(hResult, shape=(inputShape[0], inputShape[1]*inputShape[1], -1))
+    hResult1D = tf.reshape(hResult, shape=(batch_size, inputShape[1]*inputShape[1], h_dim))
     hSum = tf.reduce_sum(hResult1D, axis=1)
     return build_f(hSum, question)
 
 def buildRN_VIII_jl(objects, question, m):#objects shape=(batch_size, obj_count, obj_dim), question shape=(batch_size, question_dim), m=RN layer count
-    def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, obj_dim)
-        layerInput = tf.concat([objPairs, question], 1)
-        return tf.layers.dense(layerInput, 256)#TODO: introduce constant for units count and add more layers
+    #model parameters
+    h_dim = 256
+    g_dim = 256
+    f_dim = 256
 
-    def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, obj_dim)
+    def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
         layerInput = tf.concat([objPairs, question], 1)
-        return tf.layers.dense(layerInput, 256)#TODO: introduce constant for units count and add more layers
+        return tf.layers.dense(layerInput, g_dim)#TODO: introduce constant for units count and add more layers
 
-    def build_f(hSum, question):#gSum shape=(batch_size, g_dim)
+    def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*g_dim)
+        layerInput = tf.concat([objPairs, question], 1)
+        return tf.layers.dense(layerInput, h_dim)#TODO: introduce constant for units count and add more layers
+
+    def build_f(hSum, question):#gSum shape=(batch_size, h_dim)
         layerInput = hSum
-        return tf.layers.dense(layerInput, 256)#TODO: introduce constant for units count and add more layers
+        return tf.layers.dense(layerInput, f_dim)#TODO: introduce constant for units count and add more layers
 
     inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
     objPairs2D = getCombinations(objects)
-    objPairs = tf.reshape(objPairs2D, shape=(-1, inputShape[2]))
+    objPairs = tf.reshape(objPairs2D, shape=(-1, 2*obj_dim))
     questionRep = tf.tile(question, [1, inputShape[1]*inputShape[1]])
-    questionRep = tf.reshape(questionRep, shape=(-1, questionShape[1]))
+    questionRep = tf.reshape(questionRep, shape=(-1, question_dim))
     gResult = build_g(objPairs, questionRep)
 
     prevResult = gResult#shape=(batch_size*obj_count*obj_count, g_dim)
     for curLayer in range(m):
-        prevResult2D = tf.reshape(gResult, shape=(inputShape[0], inputShape[1], inputShape[1], -1))
+        prevResult2D = tf.reshape(gResult, shape=(batch_size, inputShape[1], inputShape[1], -1))
         sumJ = tf.reduce_sum(prevResult2D, axis=2)
         #sumL = sumJ # correct but unused variable in optimized version
         intermedShape = tf.shape(prevResult2D)#[0] is batch_size, [1] is obj_count, [2] is obj_count, [3] is g_dim (for curLayer=0) or h_dim (for curLayer>0)
@@ -354,33 +402,38 @@ def buildRN_VIII_jl(objects, question, m):#objects shape=(batch_size, obj_count,
         intermedObjPairs = tf.reshape(intermedObjPairs2D, shape=(-1, intermedShape[3]))
         hResult = build_h(intermedObjPairs, questionRep)
         prevResult = hResult
-    hResult1D = tf.reshape(prevResult, shape=(inputShape[0], inputShape[1]*inputShape[1], -1))
+    hResult1D = tf.reshape(prevResult, shape=(batch_size, inputShape[1]*inputShape[1], -1))
     hSum = tf.reduce_sum(hResult1D, axis=1)
     return build_f(hSum, question)
 
 def buildRN_VIII_jk(objects, question, m):#objects shape=(batch_size, obj_count, obj_dim), question shape=(batch_size, question_dim), m=RN layer count
-    def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, obj_dim)
-        layerInput = tf.concat([objPairs, question], 1)
-        return tf.layers.dense(layerInput, 256)#TODO: introduce constant for units count and add more layers
+    #model parameters
+    h_dim = 256
+    g_dim = 256
+    f_dim = 256
 
-    def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, obj_dim)
+    def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
         layerInput = tf.concat([objPairs, question], 1)
-        return tf.layers.dense(layerInput, 256)#TODO: introduce constant for units count and add more layers
+        return tf.layers.dense(layerInput, g_dim)#TODO: introduce constant for units count and add more layers
 
-    def build_f(hSum, question):#gSum shape=(batch_size, g_dim)
+    def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*g_dim)
+        layerInput = tf.concat([objPairs, question], 1)
+        return tf.layers.dense(layerInput, h_dim)#TODO: introduce constant for units count and add more layers
+
+    def build_f(hSum, question):#gSum shape=(batch_size, h_dim)
         layerInput = hSum
-        return tf.layers.dense(layerInput, 256)#TODO: introduce constant for units count and add more layers
+        return tf.layers.dense(layerInput, f_dim)#TODO: introduce constant for units count and add more layers
 
     inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
     objPairs2D = getCombinations(objects)
-    objPairs = tf.reshape(objPairs2D, shape=(-1, inputShape[2]))
+    objPairs = tf.reshape(objPairs2D, shape=(-1, 2*obj_dim))
     questionRep = tf.tile(question, [1, inputShape[1]*inputShape[1]])
-    questionRep = tf.reshape(questionRep, shape=(-1, questionShape[1]))
+    questionRep = tf.reshape(questionRep, shape=(-1, question_dim))
     gResult = build_g(objPairs, questionRep)
 
     prevResult = gResult#shape=(batch_size*obj_count*obj_count, g_dim)
     for curLayer in range(m):
-        prevResult2D = tf.reshape(gResult, shape=(inputShape[0], inputShape[1], inputShape[1], -1))
+        prevResult2D = tf.reshape(gResult, shape=(batch_size, inputShape[1], inputShape[1], -1))
         sumJ = tf.reduce_sum(prevResult2D, axis=2)
         sumK = tf.reduce_sum(prevResult2D, axis=1)
         intermedShape = tf.shape(prevResult2D)#[0] is batch_size, [1] is obj_count, [2] is obj_count, [3] is g_dim (for curLayer=0) or h_dim (for curLayer>0)
@@ -388,7 +441,7 @@ def buildRN_VIII_jk(objects, question, m):#objects shape=(batch_size, obj_count,
         intermedObjPairs = tf.reshape(intermedObjPairs2D, shape=(-1, intermedShape[3]))
         hResult = build_h(intermedObjPairs, questionRep)
         prevResult = hResult
-    hResult1D = tf.reshape(prevResult, shape=(inputShape[0], inputShape[1]*inputShape[1], -1))
+    hResult1D = tf.reshape(prevResult, shape=(batch_size, inputShape[1]*inputShape[1], -1))
     hSum = tf.reduce_sum(hResult1D, axis=1)
     return build_f(hSum, question)
 
@@ -396,8 +449,8 @@ def buildRN_VIII_jk(objects, question, m):#objects shape=(batch_size, obj_count,
 def buildWordProcessorLSTMs():
     #model parameters
     embeddingDimension = 32
-    qLstmHiddenUnits = 32
-    sLstmHiddenUnits = 32
+    qLstmHiddenUnits = question_dim
+    sLstmHiddenUnits = obj_dim
 
     inputContext = tf.placeholder(tf.int32, shape=(batch_size, None, None))
     inputContextLengths = tf.placeholder(tf.int32, shape=(batch_size,))#Number of sentences in each context
@@ -420,8 +473,8 @@ def buildWordProcessorLSTMs():
 
     #setup sentence LSTM
     inputContextMaxLength = tf.reduce_max(inputContextLengths)
-    inputSentences = tf.reshape(inputContext, shape=(batch_size*inputContextMaxLength, -1))
     inputContextSentenceMaxLength = tf.reduce_max(inputContextSentenceLengths)
+    inputSentences = tf.reshape(inputContext, shape=(batch_size*inputContextMaxLength, inputContextSentenceMaxLength))
     embeddedSentences = tf.nn.embedding_lookup(wordEmbedding, inputSentences)#shape=(batch_size*contextMaxLength, seq_len, embeddingDimension)
     #do we want to broadcast the question to the sentence LSTM here? or rather leave it entirely to the relation network
     #START VARIANTS
@@ -536,6 +589,7 @@ def runValidation():
 def train():
     for i, (contextInput, contextLengths, contextSentenceLengths, questionInput, questionLengths, answerInput) in enumerate(getBatches(trainingData, epoch_count)):
         feed_dict={inputContext: contextInput, inputContextLengths: contextLengths, inputContextSentenceLengths: contextSentenceLengths, inputQuestion: questionInput, inputQuestionLengths: questionLengths, inputAnswer: answerInput}
+        #print(sess.run(tf.shape(question), feed_dict=feed_dict))#debug
         sess.run(optimizer_op, feed_dict=feed_dict)
         lossVal = sess.run(loss, feed_dict=feed_dict)
         if (i % 50 == 0):
@@ -543,6 +597,9 @@ def train():
             print("loss " + str(lossVal))
         if (i % 1000 == 999):
             runValidation()
+
+sess.run(tf.global_variables_initializer())
+train()
 
 #print(sess.run(resTensorB))
 # print(sess.run(getHeteroCombinations(testTensorC, testTensorC)))
