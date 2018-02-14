@@ -1,6 +1,10 @@
 import tensorflow as tf
 import numpy as np
 
+#training parameters
+batch_size = 32
+epoch_count = 10
+
 sess = tf.Session()
 
 testTensorA = tf.constant([[[1, 2, 3, 4, 5, 6, 7], [8, 9, 10, 11, 12, 13, 14]]])
@@ -375,6 +379,60 @@ def buildRN_VIII_jk(objects, question, m):#objects shape=(batch_size, obj_count,
     hSum = tf.reduce_sum(hResult1D, axis=1)
     return build_f(hSum, question)
 
+#process questions and context sentences through LSTMs and use the final LSTM states as input question and objects for the Relation Networks
+def buildWordProcessorLSTMs():
+    #model parameters
+    embeddingDimension = 32
+    qLstmHiddenUnits = 32
+    sLstmHiddenUnits = 32
+
+    inputContext = tf.placeholder(tf.int32, shape=(batch_size, None, None))
+    inputContextLengths = tf.placeholder(tf.int32, shape=(batch_size,))#Number of sentences in each context
+    inputContextSentenceLengths = tf.placeholder(tf.int32, shape=(batch_size, None))#Number of words in each sentence
+    inputQuestion = tf.placeholder(tf.int32, shape=(batch_size, None))
+    inputQuestionLengths = tf.placeholder(tf.int32, shape=(batch_size,))
+
+    #convert word indices to embedded representations (using learnable embeddings rather than one-hot vectors here)
+    wordEmbedding = tf.Variable(tf.random_uniform(shape=[dictSize, embeddingDimension], minval=-1, maxval=1, seed=7))
+    embeddedQuestion = tf.nn.embedding_lookup(wordEmbedding, inputQuestion)
+
+    #setup question LSTM
+    questionLSTMcell = tf.nn.rnn_cell.LSTMCell(num_units=qLstmHiddenUnits)
+    questionLSTMoutputs, _ = tf.nn.dynamic_rnn(questionLSTMcell, embeddedQuestion, dtype=tf.float32, scope="questionLSTM")#shape=(batch_size, seq_len, qLstmHiddenUnits)
+    #extract final states at the end of each sample's sequence
+    inputQuestionMaxLength = tf.reduce_max(inputQuestionLengths)
+    questionLSTMoutputs = tf.reshape(questionLSTMoutputs, shape=(-1, qLstmHiddenUnits))
+    qSeqEndSelector = tf.range(batch_size) * inputQuestionMaxLength + (inputQuestionLengths - 1)
+    questionLSTMoutputs = tf.gather(questionLSTMoutputs, qSeqEndSelector)#shape=(batch_size, qLstmHiddenUnits)
+
+    #setup sentence LSTM
+    inputContextMaxLength = tf.reduce_max(inputContextLengths)
+    inputSentences = tf.reshape(inputContext, shape=(batch_size*inputContextMaxLength, -1))
+    inputContextSentenceMaxLength = tf.reduce_max(inputContextSentenceLengths)
+    embeddedSentences = tf.nn.embedding_lookup(wordEmbedding, inputSentences)#shape=(batch_size*contextMaxLength, seq_len, embeddingDimension)
+    #do we want to broadcast the question to the sentence LSTM here? or rather leave it entirely to the relation network
+
+    #START VARIANTS
+    # a) variant WITH broadcasting the questionLSTMoutputs to all sentences and timesteps (words/tokens):
+    broadcastedQuestionLSTMoutputs = tf.expand_dims(questionLSTMoutputs, axis=1)#add time axis
+    broadcastedQuestionLSTMoutputs = tf.tile(broadcastedQuestionLSTMoutputs, [inputContextMaxLength, inputContextSentenceMaxLength, 1])#repeat along time axis
+    sentenceLSTMcell = tf.nn.rnn_cell.LSTMCell(num_units=sLstmHiddenUnits)
+    sentenceLSTMoutputs, _ = tf.nn.dynamic_rnn(sentenceLSTMcell, tf.concat([embeddedSentences, broadcastedQuestionLSTMoutputs], axis=2), dtype=tf.float32, scope="sentenceLSTM")#shape=(batch_size*contextMaxLength, seq_len, sLstmHiddenUnits)
+    # b) variant WITHOUT broadcasting the questionLSTMoutputs to all sentences and timesteps (words/tokens):
+    # sentenceLSTMcell = tf.nn.rnn_cell.LSTMCell(num_units=sLstmHiddenUnits)
+    # sentenceLSTMoutputs, _ = tf.nn.dynamic_rnn(sentenceLSTMcell, embeddedSentences, dtype=tf.float32, scope="sentenceLSTM")#shape=(batch_size*contextMaxLength, seq_len, sLstmHiddenUnits)
+    #END VARIANTS
+    #extract final states at the end of each sentence's sequence
+    sentenceLSTMoutputs = tf.reshape(sentenceLSTMoutputs, shape=(-1, sLstmHiddenUnits))
+    inputContextSentenceLengths1D = tf.reshape(inputContextSentenceLengths, shape=(-1,))
+    sSeqEndSelector = tf.range(batch_size*inputContextMaxLength) * inputContextSentenceMaxLength + (inputContextSentenceLengths1D - 1)
+    sentenceLSTMoutputs = tf.gather(sentenceLSTMoutputs, sSeqEndSelector)#shape=(batch_size*contextMaxLength, sLstmHiddenUnits)
+    sentenceLSTMoutputs = tf.reshape(sentenceLSTMoutputs, shape=(batch_size, inputContextMaxLength, sLstmHiddenUnits))#these are the objects for the relation network input
+
+    #TODO: optimization: dont apply the LSTMs to the padding-sentences (empty sentences added to make all contexts in a batch the same sentence-count)
+
+    #return inputContext, inputContextLengths, inputQuestion, inputQuestionLengths, answer, answerGates
+    return inputContext, inputContextLengths, inputContextSentenceLengths, inputQuestion, inputQuestionLengths, sentenceLSTMoutputs, questionLSTMoutputs
 
 #print(sess.run(resTensorB))
 print(sess.run(getHeteroCombinations(testTensorC, testTensorC)))
