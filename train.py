@@ -411,7 +411,6 @@ def buildWordProcessorLSTMs():
     inputContextSentenceMaxLength = tf.reduce_max(inputContextSentenceLengths)
     embeddedSentences = tf.nn.embedding_lookup(wordEmbedding, inputSentences)#shape=(batch_size*contextMaxLength, seq_len, embeddingDimension)
     #do we want to broadcast the question to the sentence LSTM here? or rather leave it entirely to the relation network
-
     #START VARIANTS
     # a) variant WITH broadcasting the questionLSTMoutputs to all sentences and timesteps (words/tokens):
     broadcastedQuestionLSTMoutputs = tf.expand_dims(questionLSTMoutputs, axis=1)#add time axis
@@ -433,6 +432,37 @@ def buildWordProcessorLSTMs():
 
     #return inputContext, inputContextLengths, inputQuestion, inputQuestionLengths, answer, answerGates
     return inputContext, inputContextLengths, inputContextSentenceLengths, inputQuestion, inputQuestionLengths, sentenceLSTMoutputs, questionLSTMoutputs
+
+#utility functions
+def getIndices(dataset, epochs):#generate indices over all epochs
+    for epoch in range(epochs):
+        for index in np.random.permutation(len(dataset)):
+            yield index
+
+def getBatchIndices(dataset, epochs):#generate batches of indices
+    batchIndices = []
+    for index in getIndices(dataset, epochs):
+        batchIndices.append(index)
+        if len(batchIndices) >= batch_size:
+            yield batchIndices
+            batchIndices = []
+
+def getBatches(dataset, epochs):#generate batches of data
+    for batchIndices in getBatchIndices(dataset, epochs):
+        samples = [dataset[i] for i in batchIndices]
+        contextLengths = [len(context) for context, question, answer in samples]
+        maxContextLen = max(contextLengths)
+        contextSentenceLengths = [[len(sentence) for sentence in context] for context, question, answer in samples]
+        maxContextSentenceLen = max([max(sentenceLengthInContext) for sentenceLengthInContext in contextSentenceLengths])
+        questionLengths = [len(question) for context, question, answer in samples]
+        maxQuestionLen = max(questionLengths)
+        #build tensors from data and apply padding
+        emptySentence = [0]*maxContextSentenceLen#empty sentence for batch context padding
+        contextInput = [[sentence + [0]*(maxContextSentenceLen - len(sentence)) for sentence in context] + [emptySentence]*(maxContextLen - len(context)) for context, question, answer in samples]
+        contextSentenceLengths = [sentenceLengths + [1]*(maxContextLen - len(sentenceLengths)) for sentenceLengths in contextSentenceLengths]#apply padding for tensorflow tensor - padding with 1 instead of 0 so sequence-end-selectors dont fail with bufferunderrun
+        questionInput = [question + [0]*(maxQuestionLen - len(question)) for context, question, answer in samples]
+        answerInput = [answer for context, question, answer in samples]
+        yield contextInput, contextLengths, contextSentenceLengths, questionInput, questionLengths, answerInput
 
 #print(sess.run(resTensorB))
 print(sess.run(getHeteroCombinations(testTensorC, testTensorC)))
