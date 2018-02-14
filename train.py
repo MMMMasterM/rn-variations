@@ -15,7 +15,7 @@ with open(os.path.join('processeddata', 'valid.txt'), 'rb') as f:
     validationData = pickle.load(f)
 
 #training parameters
-batch_size = 32
+batch_size = 1#32
 epoch_count = 10
 
 question_dim = 32
@@ -36,7 +36,7 @@ def getHeteroCombinations(tensorA, tensorB):#input shape=(batch_size, obj_count,
     tensorRepA = tf.tile(tensorA, [1, 1, inputShapeB[1]])
     tensorA = tf.reshape(tensorRepA, shape=(inputShapeA[0], inputShapeA[1], inputShapeB[1], -1))
 
-    tensorRepB = tf.tile(tensorB, [1, inputShapeB[1], 1])
+    tensorRepB = tf.tile(tensorB, [1, inputShapeA[1], 1])
     tensorB = tf.reshape(tensorRepB, shape=(inputShapeB[0], inputShapeA[1], inputShapeB[1], -1))
     return tf.concat([tensorA, tensorB], 3)#output shape=(batch_size, obj_count_A, obj_count_B, obj_dim_A + obj_dim_B)
 
@@ -158,7 +158,7 @@ def buildRN_III(objects, question):#objects shape=(batch_size, obj_count, obj_di
     questionRep = tf.tile(question, [1, inputShape[1]*inputShape[1]])
     questionRep = tf.reshape(questionRep, shape=(-1, question_dim))
     hResult = build_h(objPairs, questionRep)
-    hResult1D = tf.reshape(gResult, shape=(batch_size, inputShape[1]*inputShape[1], h_dim))
+    hResult1D = tf.reshape(hResult, shape=(batch_size, inputShape[1]*inputShape[1], h_dim))
     #intermedShape = tf.shape(hResult1D)#[0] is batch_size, [1] is obj_count*obj_count, [2] is h_dim
     intermedObjPairs2D = getHeteroCombinations(hResult1D, objects)
     intermedObjPairs = tf.reshape(intermedObjPairs2D, shape=(-1, h_dim+obj_dim))
@@ -230,11 +230,11 @@ def buildRN_V(objects, question):#objects shape=(batch_size, obj_count, obj_dim)
     inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
     #questionShape = tf.shape(question)#[0] is batch_size, [1] is question_dim
     objPairs2D = getCombinations(objects)
-    objPairs = tf.reshape(objPairs2D, shape=(-1, inputShape[2]))
+    objPairs = tf.reshape(objPairs2D, shape=(-1, 2*obj_dim))
     questionRep = tf.tile(question, [1, inputShape[1]*inputShape[1]])
     questionRep = tf.reshape(questionRep, shape=(-1, question_dim))
     hResult = build_h(objPairs, questionRep)
-    hResult2D = tf.reshape(gResult, shape=(inputShape[0], inputShape[1], inputShape[1], -1))
+    hResult2D = tf.reshape(hResult, shape=(batch_size, inputShape[1], inputShape[1], -1))
     intermedObjPairs3D = getTransitiveCombine(hResult2D)
     #intermedShape = tf.shape(intermedObjPairs3D)#[0] is batch_size, [1] is obj_count, [2] is obj_count, [3] is obj_count, [4] is 2*h_dim
     intermedObjPairs = tf.reshape(intermedObjPairs3D, shape=(-1, 2*h_dim))
@@ -279,10 +279,10 @@ def buildRN_VI(objects, question):#objects shape=(batch_size, obj_count, obj_dim
     questionRep = tf.tile(question, [1, inputShape[1]*inputShape[1]])
     questionRep = tf.reshape(questionRep, shape=(-1, question_dim))
     hResult = build_h(objPairs, questionRep)
-    hResult2D = tf.reshape(gResult, shape=(batch_size, inputShape[1], inputShape[1], -1))
+    hResult2D = tf.reshape(hResult, shape=(batch_size, inputShape[1], inputShape[1], -1))
     intermedObjPairs3D = getTransitiveCombine(hResult2D)
     intermedShape = tf.shape(intermedObjPairs3D)#[0] is batch_size, [1] is obj_count, [2] is obj_count, [3] is obj_count, [4] is 2*h_dim
-    intermedObjPairs = tf.reshape(intermedObjPairs3D, shape=(-1, intermedShape[4]))
+    intermedObjPairs = tf.reshape(intermedObjPairs3D, shape=(-1, 2*h_dim))
     questionRep3 = tf.tile(question, [1, inputShape[1]*inputShape[1]*inputShape[1]])
     questionRep3 = tf.reshape(questionRep3, shape=(-1, question_dim))
     gResult = build_g(intermedObjPairs, questionRep3)
@@ -392,17 +392,19 @@ def buildRN_VIII_jl(objects, question, m):#objects shape=(batch_size, obj_count,
     gResult = build_g(objPairs, questionRep)
 
     prevResult = gResult#shape=(batch_size*obj_count*obj_count, g_dim)
+    prevResultDim = g_dim
     for curLayer in range(m):
-        prevResult2D = tf.reshape(gResult, shape=(batch_size, inputShape[1], inputShape[1], -1))
+        prevResult2D = tf.reshape(gResult, shape=(batch_size, inputShape[1], inputShape[1], prevResultDim))
         sumJ = tf.reduce_sum(prevResult2D, axis=2)
         #sumL = sumJ # correct but unused variable in optimized version
-        intermedShape = tf.shape(prevResult2D)#[0] is batch_size, [1] is obj_count, [2] is obj_count, [3] is g_dim (for curLayer=0) or h_dim (for curLayer>0)
+        #intermedShape = tf.shape(prevResult2D)#[0] is batch_size, [1] is obj_count, [2] is obj_count, [3] is g_dim (for curLayer=0) or h_dim (for curLayer>0)
         #intermedObjPairs2D = getHeteroCombinations(sumJ, sumL)#naive, unoptimized - optimize using knowledge that sumL=sumJ instead:
         intermedObjPairs2D = getCombinations(sumJ)#optimized version
-        intermedObjPairs = tf.reshape(intermedObjPairs2D, shape=(-1, intermedShape[3]))
+        intermedObjPairs = tf.reshape(intermedObjPairs2D, shape=(-1, 2*prevResultDim))
         hResult = build_h(intermedObjPairs, questionRep)
         prevResult = hResult
-    hResult1D = tf.reshape(prevResult, shape=(batch_size, inputShape[1]*inputShape[1], -1))
+        prevResultDim = h_dim
+    hResult1D = tf.reshape(prevResult, shape=(batch_size, inputShape[1]*inputShape[1], prevResultDim))
     hSum = tf.reduce_sum(hResult1D, axis=1)
     return build_f(hSum, question)
 
@@ -432,16 +434,18 @@ def buildRN_VIII_jk(objects, question, m):#objects shape=(batch_size, obj_count,
     gResult = build_g(objPairs, questionRep)
 
     prevResult = gResult#shape=(batch_size*obj_count*obj_count, g_dim)
+    prevResultDim = g_dim
     for curLayer in range(m):
-        prevResult2D = tf.reshape(gResult, shape=(batch_size, inputShape[1], inputShape[1], -1))
+        prevResult2D = tf.reshape(gResult, shape=(batch_size, inputShape[1], inputShape[1], prevResultDim))
         sumJ = tf.reduce_sum(prevResult2D, axis=2)
         sumK = tf.reduce_sum(prevResult2D, axis=1)
-        intermedShape = tf.shape(prevResult2D)#[0] is batch_size, [1] is obj_count, [2] is obj_count, [3] is g_dim (for curLayer=0) or h_dim (for curLayer>0)
+        #intermedShape = tf.shape(prevResult2D)#[0] is batch_size, [1] is obj_count, [2] is obj_count, [3] is g_dim (for curLayer=0) or h_dim (for curLayer>0)
         intermedObjPairs2D = getHeteroCombinations(sumJ, sumK)
-        intermedObjPairs = tf.reshape(intermedObjPairs2D, shape=(-1, intermedShape[3]))
+        intermedObjPairs = tf.reshape(intermedObjPairs2D, shape=(-1, 2*prevResultDim))
         hResult = build_h(intermedObjPairs, questionRep)
         prevResult = hResult
-    hResult1D = tf.reshape(prevResult, shape=(batch_size, inputShape[1]*inputShape[1], -1))
+        prevResultDim = h_dim
+    hResult1D = tf.reshape(prevResult, shape=(batch_size, inputShape[1]*inputShape[1], prevResultDim))
     hSum = tf.reduce_sum(hResult1D, axis=1)
     return build_f(hSum, question)
 
@@ -553,7 +557,7 @@ def getBatches(dataset, epochs):#generate batches of data
 
 (inputContext, inputContextLengths, inputContextSentenceLengths, inputQuestion, inputQuestionLengths, objects, question) = buildWordProcessorLSTMs()
 
-rnOutput = buildRN_I(objects, question)
+rnOutput = buildRN_VIII_jl(objects, question, 0)
 
 (answer, answerGates) = buildAnswerModel(rnOutput)
 
@@ -589,7 +593,7 @@ def runValidation():
 def train():
     for i, (contextInput, contextLengths, contextSentenceLengths, questionInput, questionLengths, answerInput) in enumerate(getBatches(trainingData, epoch_count)):
         feed_dict={inputContext: contextInput, inputContextLengths: contextLengths, inputContextSentenceLengths: contextSentenceLengths, inputQuestion: questionInput, inputQuestionLengths: questionLengths, inputAnswer: answerInput}
-        #print(sess.run(tf.shape(question), feed_dict=feed_dict))#debug
+        #print(sess.run(tf.shape(objects), feed_dict=feed_dict))#debug
         sess.run(optimizer_op, feed_dict=feed_dict)
         lossVal = sess.run(loss, feed_dict=feed_dict)
         if (i % 50 == 0):
