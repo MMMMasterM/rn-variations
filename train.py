@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+import os, pickle
 
 #training parameters
 batch_size = 32
@@ -463,6 +464,18 @@ def getBatches(dataset, epochs):#generate batches of data
         questionInput = [question + [0]*(maxQuestionLen - len(question)) for context, question, answer in samples]
         answerInput = [answer for context, question, answer in samples]
         yield contextInput, contextLengths, contextSentenceLengths, questionInput, questionLengths, answerInput
+
+#load dictionary
+with open(os.path.join('processeddata', 'dictionary.txt'), 'rb') as f:
+    wordIndices = pickle.load(f)
+dictSize = len(wordIndices) + 1#padding entry with index 0 is not listed in wordIndices
+
+#load data
+with open(os.path.join('processeddata', 'train.txt'), 'rb') as f:
+    trainingData = pickle.load(f)
+
+with open(os.path.join('processeddata', 'valid.txt'), 'rb') as f:
+    validationData = pickle.load(f)
 
 #print(sess.run(resTensorB))
 print(sess.run(getHeteroCombinations(testTensorC, testTensorC)))
