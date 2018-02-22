@@ -21,6 +21,22 @@ epoch_count = 10
 question_dim = 256
 obj_dim = 256
 
+#parse which RN to use
+modelToUse = 1
+layerCount = 0#only relevant for RN VIII
+if len(sys.argv) >= 2:
+    modelToUse = int(sys.argv[1])
+    if len(sys.argv) >= 3:
+        layerCount = int(sys.argv[2])
+
+#determine appropriate batch size for chosen model
+if modelToUse == 1 or modelToUse == 7 or modelToUse == 8:
+    print("Using batch_size=8 for models with quadratic complexity")
+    batch_size = 8
+else:
+    print("Using batch_size=1 for models with cubic complexity")
+    batch_size = 1
+
 sess = tf.Session()
 
 testTensorA = tf.constant([[[1, 2, 3, 4, 5, 6, 7], [8, 9, 10, 11, 12, 13, 14]]])
@@ -483,7 +499,7 @@ def buildRN_VIII_jk(objects, question, m):#objects shape=(batch_size, obj_count,
 def buildWordProcessorLSTMs():
     with tf.name_scope('wordProcessorLSTMs'):
         #model parameters
-        embeddingDimension = 32
+        embeddingDimension = 128
         qLstmHiddenUnits = question_dim
         sLstmHiddenUnits = obj_dim
 
@@ -589,21 +605,6 @@ def getBatches(dataset, epochs):#generate batches of data
         yield contextInput, contextLengths, contextSentenceLengths, questionInput, questionLengths, answerInput
 
 #build the whole model and run it
-#parse which RN to use
-modelToUse = 1
-layerCount = 0#only relevant for RN VIII
-if len(sys.argv) >= 2:
-    modelToUse = int(sys.argv[1])
-    if len(sys.argv) >= 3:
-        layerCount = int(sys.argv[2])
-
-#determine batch size
-if modelToUse == 1 or modelToUse == 7 or modelToUse == 8:
-    print("Using batch_size=8 for models with quadratic complexity")
-    batch_size = 8
-else:
-    print("Using batch_size=1 for models with cubic complexity")
-    batch_size = 1
 
 (inputContext, inputContextLengths, inputContextSentenceLengths, inputQuestion, inputQuestionLengths, objects, question) = buildWordProcessorLSTMs()
 
