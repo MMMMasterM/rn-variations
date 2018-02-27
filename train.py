@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 import os, pickle, sys
 
-logDir = 'log'
+logDir = os.path.join('log', '_'.join(sys.argv[1:]))
 try:
     os.stat(logDir)
 except:

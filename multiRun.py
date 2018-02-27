@@ -47,9 +47,11 @@ def worker(gpuNumber):
         logFileName = datetime.datetime.now().strftime("%F_%H_%M_%S") + "__" + str(gpuNumber) + ".txt"
         print("Running run parameters " + str(runList[workItem]) + " on " + str(gpuNumber) + " logFile " + logFileName)
 
-        with open(os.path.join(logDir, logFileName), 'wb') as logFile:
+        with open(os.path.join(logDir, logFileName), 'w') as logFile:
             proc = subprocess.Popen(['python', 'train.py'] + [str(arg) for arg in runList[workItem]], env=workerEnv, stdout=logFile, stderr=logFile)
             proc.wait()
+
+        print("Run " + str(runList[workItem]) + " on " + str(gpuNumber) + " finished")
 
 for i in gpuList:
     t = Thread(target=worker, args=(i,))
