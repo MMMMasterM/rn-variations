@@ -2,6 +2,12 @@ import tensorflow as tf
 import numpy as np
 import os, pickle, sys
 
+logDir = 'log'
+try:
+    os.stat(logDir)
+except:
+    os.mkdir(logDir)
+
 #load dictionary
 with open(os.path.join('processeddata', 'dictionary.txt'), 'rb') as f:
     wordIndices = pickle.load(f)
@@ -657,7 +663,7 @@ task_acc_summaries = {}
 for task_name in validationData:
     task_acc_summaries[task_name] = tf.summary.scalar('task_acc_' + task_name, task_acc_placeholders[task_name])
 #merged_summaries = tf.summary.merge_all()
-writer = tf.summary.FileWriter('log', sess.graph)
+writer = tf.summary.FileWriter(logDir, sess.graph)
 
 def runValidation():
     total_acc = []
