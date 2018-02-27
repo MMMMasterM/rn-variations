@@ -34,7 +34,7 @@ parentEnv = dict(os.environ)
 def worker(gpuNumber):
     global nextWorkItem
     workerEnv = parentEnv.copy()
-    workerEnv["CUDA_VISIBLE_DEVICES"] = gpuNumber
+    workerEnv["CUDA_VISIBLE_DEVICES"] = str(gpuNumber)
     while True:
         workItemLock.acquire()
         workItem = nextWorkItem
