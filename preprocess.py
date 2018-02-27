@@ -4,6 +4,14 @@ import pickle
 
 print("Preprocessing dataset...")
 
+outDir = 'processeddata'
+
+#create directory if it doesnt exist
+try:
+    os.stat(outDir)
+except:
+    os.mkdir(outDir)
+
 dataPath = os.path.join('tasks_1-20_v1-2', 'en-valid-10k')
 dataFiles = [curEntry for curEntry in os.listdir(dataPath) if os.path.isfile(os.path.join(dataPath, curEntry))]
 trainPaths = {}
@@ -46,7 +54,7 @@ for i, word in enumerate(wordset):
     wordIndices[word] = i + 1#reserve 0 for zero-padding sequences
 
 # save dictionary
-with open(os.path.join('processeddata', 'dictionary.txt'), 'wb') as f:
+with open(os.path.join(outDir, 'dictionary.txt'), 'wb') as f:
     pickle.dump(wordIndices, f)
 
 def linesFromFilepaths(filepathIter):
@@ -130,14 +138,6 @@ for taskname, filepath in validPaths.items():
 
 
 #TODO: apply padding?
-
-outDir = 'processeddata'
-
-#create directory if it doesnt exist
-try:
-    os.stat(outDir)
-except:
-    os.mkdir(outDir)
 
 #save training dataset
 with open(os.path.join(outDir, 'train.txt'), 'wb') as f:
