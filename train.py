@@ -664,6 +664,7 @@ for task_name in validationData:
     task_acc_summaries[task_name] = tf.summary.scalar('task_acc_' + task_name, task_acc_placeholders[task_name])
 #merged_summaries = tf.summary.merge_all()
 writer = tf.summary.FileWriter(logDir, sess.graph)
+saver = tf.train.Saver()
 
 def runValidation():
     total_acc = []
@@ -704,10 +705,29 @@ def train():
             print("batch " + str(i))
             print("loss " + str(lossVal))
         if (i % 1000 == 999):
+            saver.save(sess, weightsPath)
+            print('Model saved.')
             runValidation()
 
-sess.run(tf.global_variables_initializer())
+weightsDir = os.path.join('weights', '_'.join(sys.argv[1:]))
+try:
+    os.stat(weightsDir)
+except:
+    os.mkdir(weightsDir)
+
+weightsPath = os.path.join(weightsDir, 'model.ckpt')
+
+if os.path.isfile(weightsPath):#restore weights
+    saver.restore(sess, weightsPath)
+    print('Weights restored.')
+else:#initialize weights
+    sess.run(tf.global_variables_initializer())
+    print('Weights initialized.')
+
 train()
+
+saver.save(sess, weightsPath)
+print('Training finished. Model saved.')
 
 #print(sess.run(resTensorB))
 # print(sess.run(getHeteroCombinations(testTensorC, testTensorC)))
