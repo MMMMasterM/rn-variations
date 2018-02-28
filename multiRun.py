@@ -48,7 +48,7 @@ def worker(gpuNumber):
         print("Running run parameters " + str(runList[workItem]) + " on " + str(gpuNumber) + " logFile " + logFileName)
 
         with open(os.path.join(logDir, logFileName), 'w') as logFile:
-            proc = subprocess.Popen(['python', 'train.py'] + [str(arg) for arg in runList[workItem]], env=workerEnv, stdout=logFile, stderr=logFile)
+            proc = subprocess.Popen(['python', '-u', 'train.py'] + [str(arg) for arg in runList[workItem]], env=workerEnv, stdout=logFile, stderr=logFile)
             proc.wait()
 
         print("Run " + str(runList[workItem]) + " on " + str(gpuNumber) + " finished")
