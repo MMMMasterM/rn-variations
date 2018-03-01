@@ -575,7 +575,11 @@ def buildOptimizer(answer, answerGates):
         #loss = tf.losses.mean_squared_error(labels=inputAnswer, predictions=answer) * dictSize - tf.reduce_mean(tf.square(answerGates - 0.5)) + 0.25#regularization term to enforce gate values close to 0 or 1
         loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=answer, labels=inputAnswer)) - tf.reduce_mean(tf.square(answerGates - 0.5)) + 0.25#regularization term to enforce gate values close to 0 or 1
         #softmax_cross_entropy_with_logits is not suitable for outputs that are not probability distributions (which might be a problem for multi-answer questions) - still gives surprisingly good results for a first attempt
-        optimizer_op = tf.train.AdamOptimizer(1e-5).minimize(loss)
+        optimizer = tf.train.AdamOptimizer(1e-5)
+        gradients, variables = zip(*optimizer.compute_gradients(loss))
+        gradients, _ = tf.clip_by_global_norm(gradients, 5.0)
+        optimizer_op = optimizer.apply_gradients(zip(gradients, variables))
+        #optimizer_op = tf.train.AdamOptimizer(1e-5).minimize(loss)
 
     return inputAnswer, loss, optimizer_op
 
@@ -709,6 +713,10 @@ def train():
             print('Model saved.')
             runValidation()
 
+try:
+    os.stat('weights')
+except:
+    os.mkdir('weights')
 weightsDir = os.path.join('weights', '_'.join(sys.argv[1:]))
 try:
     os.stat(weightsDir)
