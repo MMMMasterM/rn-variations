@@ -9,6 +9,9 @@ with open(os.path.join('processeddata', 'dictionary.txt'), 'rb') as f:
 dictSize = len(wordIndices) + 1#padding entry with index 0 is not listed in wordIndices
 
 #load data
+with open(os.path.join('processeddata', 'train.txt'), 'rb') as f:
+    trainingData = pickle.load(f)
+    
 with open(os.path.join('processeddata', 'test.txt'), 'rb') as f:
     testingData = pickle.load(f)
 
@@ -94,17 +97,41 @@ else:
     print("Invalid model number specified: " + str(modelToUse))
     sys.exit(0)
 
-(answer, answerGates) = modelBuilder.buildAnswerModel(rnOutput)
+(answer, answerGates, answerForCorrectness) = modelBuilder.buildAnswerModel(rnOutput)
 
-(inputAnswer, loss, optimizer_op) = modelBuilder.buildOptimizer(answer, answerGates)
+(inputAnswer, loss, optimizer_op, global_step_tensor) = modelBuilder.buildOptimizer(answer, answerGates)
 
 with tf.name_scope('testing'):
     #correct = tf.reduce_min(tf.cast(tf.equal(inputAnswer, tf.round(answer)), dtype=tf.float32), axis=1)#bad results since the max entries often don't achieve 0.5 so rounding doesnt work
-    correct = tf.cast(tf.equal(tf.argmax(inputAnswer, axis=1), tf.argmax(answer, axis=1)), dtype=tf.float32)#this is incorrect for multi-answer questions but gives better answers than rounding on single-answer questions -> TODO: find good solution for multi-answer questions
+    #correct = tf.cast(tf.equal(tf.argmax(inputAnswer, axis=1), tf.argmax(answer, axis=1)), dtype=tf.float32)#this is incorrect for multi-answer questions but gives better answers than rounding on single-answer questions -> TODO: find good solution for multi-answer questions
     #idea for better implementation of "correct"-variable: take argmax of answer1, answer2, answer3 each, also round answerGates and then calculate "answer" similar as in "buildModel()" and finally check tf.equal
+    correct = tf.cast(tf.reduce_all(tf.equal(answerForCorrectness, inputAnswer), axis=1), dtype=tf.float32)
     accuracy = tf.reduce_mean(correct)
 
 saver = tf.train.Saver()
+
+def checkTrainingAccuracy():
+    print("checking training accuracy")
+    acc = []
+    for i, (contextInput, contextLengths, contextSentenceLengths, questionInput, questionLengths, answerInput) in enumerate(getBatches(trainingData, 1)):
+        #print("validation batch " + str(i))
+        feed_dict={inputContext: contextInput, inputContextLengths: contextLengths, inputContextSentenceLengths: contextSentenceLengths, inputQuestion: questionInput, inputQuestionLengths: questionLengths, inputAnswer: answerInput}
+        batchAcc = sess.run(accuracy, feed_dict)
+        acc.append(batchAcc)
+        isCorrect = sess.run(correct, feed_dict)
+        if isCorrect[0]:
+            print("label")
+            print(answerInput)
+            print("prediction")
+            print(sess.run(answerForCorrectness, feed_dict))
+            print("correct")
+            print(sess.run(correct, feed_dict))
+            print("gates")
+            print(sess.run(answerGates, feed_dict))
+        if i > 20000:
+            break
+    totalAcc = sum(acc) / len(acc)
+    print("Accuracy: " + str(totalAcc))
 
 def runTest():
     total_acc = []
@@ -116,14 +143,14 @@ def runTest():
             feed_dict={inputContext: contextInput, inputContextLengths: contextLengths, inputContextSentenceLengths: contextSentenceLengths, inputQuestion: questionInput, inputQuestionLengths: questionLengths, inputAnswer: answerInput}
             batchAcc = sess.run(accuracy, feed_dict)
             acc.append(batchAcc)
-            # print("label")
-            # print(answerInput)
-            # print("prediction")
-            # print(sess.run(answer, feed_dict))
-            # print("correct")
-            # print(sess.run(correct, feed_dict))
-            # print("gates")
-            # print(sess.run(answerGates, feed_dict))
+            print("label")
+            print(answerInput)
+            print("prediction")
+            print(sess.run(answer, feed_dict))
+            print("correct")
+            print(sess.run(correct, feed_dict))
+            print("gates")
+            print(sess.run(answerGates, feed_dict))
         taskAcc = sum(acc) / len(acc)
         print("task accuracy " + str(taskAcc))
         total_acc.append(taskAcc)
@@ -142,5 +169,6 @@ saver.restore(sess, lastCheckpoint)
 print('Weights restored.')
 
 runTest()
+#checkTrainingAccuracy()
 
 print('Finished')

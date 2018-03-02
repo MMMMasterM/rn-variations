@@ -527,10 +527,22 @@ class ModelBuilder:
             answerStack = tf.stack([answer1, answer2, answer3], axis=1)#stack shape=(batch_size, 3, dictSize)
             answer = tf.reduce_sum(tf.multiply(answerStack, tf.expand_dims(answerGates, axis=2)), axis=1)
 
-        return answer, answerGates
+            #answer1Softmax = tf.nn.softmax(answer1)
+            #answer2Softmax = tf.nn.softmax(answer2)
+            #answer3Softmax = tf.nn.softmax(answer3)
+            #answerSoftmaxStack = tf.stack([answer1Softmax, answer2Softmax, answer3Softmax], axis=1)#stack shape=(batch_size, 3, dictSize)
+            #maxIndices = tf.argmax(tf.multiply(answerSoftmaxStack, tf.expand_dims(answerGates, axis=2)), axis=2)#shape=(batch_size, 3)
+            #maxIndices = tf.argmax(answerSoftmaxStack, axis=2)#shape=(batch_size, 3)
+            maxIndices = tf.argmax(answerStack, axis=2)#shape=(batch_size, 3) #equivalent to tf.argmax(answerSoftmaxStack, ...) because of softmax' monotonicity
+            answersOneHot = tf.one_hot(maxIndices, self.dictSize)#shape=(batch_size, 3, dictSize)
+            binaryGates = tf.round(answerGates)#shape=(batch_size, 3)
+            answerForCorrectness = tf.reduce_sum(tf.multiply(answersOneHot, tf.expand_dims(binaryGates, axis=2)), axis=1)#shape=(batch_size, dictSize)
+
+        return answer, answerGates, answerForCorrectness
 
     def buildOptimizer(self, answer, answerGates):
         with tf.name_scope('optimizer'):
+            global_step_tensor = tf.Variable(0, trainable=False, name='global_step')
             inputAnswer = tf.placeholder(tf.float32, shape=(self.batch_size, self.dictSize))#label
             #loss = tf.losses.mean_squared_error(labels=inputAnswer, predictions=answer) * dictSize - tf.reduce_mean(tf.square(answerGates - 0.5)) + 0.25#regularization term to enforce gate values close to 0 or 1
             loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=answer, labels=inputAnswer)) - tf.reduce_mean(tf.square(answerGates - 0.5)) + 0.25#regularization term to enforce gate values close to 0 or 1
@@ -539,7 +551,7 @@ class ModelBuilder:
             #gradient clipping
             gradients, variables = zip(*optimizer.compute_gradients(loss))
             gradients, _ = tf.clip_by_global_norm(gradients, 5.0)
-            optimizer_op = optimizer.apply_gradients(zip(gradients, variables))
+            optimizer_op = optimizer.apply_gradients(zip(gradients, variables), global_step=global_step_tensor)
             #optimizer_op = tf.train.AdamOptimizer(1e-5).minimize(loss)#without gradient clipping
 
-        return inputAnswer, loss, optimizer_op
+        return inputAnswer, loss, optimizer_op, global_step_tensor
