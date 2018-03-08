@@ -519,10 +519,11 @@ class ModelBuilder:
     def buildAnswerModel(self, prevNetworkOutput):
         with tf.name_scope('answerModel'):
             #tf.nn.softmax removed because it's applied afterwards by the built-in loss function softmax_cross_entropy_with_logits
-            #TODO: make a second output WITH softmax for validation/testing - not necessary while correctness is determined by argmax though due to monotonicity of softmax
-            answer1 = tf.contrib.layers.fully_connected(prevNetworkOutput, self.dictSize, activation_fn=tf.nn.relu)#tf.nn.softmax)#shape=(batch_size, dictSize)
-            answer2 = tf.contrib.layers.fully_connected(prevNetworkOutput, self.dictSize, activation_fn=tf.nn.relu)#tf.nn.softmax)
-            answer3 = tf.contrib.layers.fully_connected(prevNetworkOutput, self.dictSize, activation_fn=tf.nn.relu)#tf.nn.softmax)
+            #no relu before softmax!
+            answer1 = tf.contrib.layers.fully_connected(prevNetworkOutput, self.dictSize)#, activation_fn=tf.nn.relu)#tf.nn.softmax)#shape=(batch_size, dictSize)
+            answer2 = tf.contrib.layers.fully_connected(prevNetworkOutput, self.dictSize)#, activation_fn=tf.nn.relu)#tf.nn.softmax)
+            answer3 = tf.contrib.layers.fully_connected(prevNetworkOutput, self.dictSize)#, activation_fn=tf.nn.relu)#tf.nn.softmax)
+            #TODO: either make sure prevNetworkOutput doesnt end with a relu or put a relu-free layer before answerGates
             answerGates = tf.contrib.layers.fully_connected(prevNetworkOutput, 3, activation_fn=tf.sigmoid)#shape=(batch_size, 3)
             answerStack = tf.stack([answer1, answer2, answer3], axis=1)#stack shape=(batch_size, 3, dictSize)
             answer = tf.reduce_sum(tf.multiply(answerStack, tf.expand_dims(answerGates, axis=2)), axis=1)
@@ -550,8 +551,9 @@ class ModelBuilder:
             optimizer = tf.train.AdamOptimizer(1e-5)
             #gradient clipping
             gradients, variables = zip(*optimizer.compute_gradients(loss))
+            gradientsNorm = tf.global_norm(gradients)#for logging purposes - keep this line before clipping
             gradients, _ = tf.clip_by_global_norm(gradients, 5.0)
             optimizer_op = optimizer.apply_gradients(zip(gradients, variables), global_step=global_step_tensor)
             #optimizer_op = tf.train.AdamOptimizer(1e-5).minimize(loss)#without gradient clipping
 
-        return inputAnswer, loss, optimizer_op, global_step_tensor
+        return inputAnswer, loss, optimizer_op, global_step_tensor, gradientsNorm

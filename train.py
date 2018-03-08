@@ -124,7 +124,7 @@ else:
 
 (answer, answerGates, answerForCorrectness) = modelBuilder.buildAnswerModel(rnOutput)
 
-(inputAnswer, loss, optimizer_op, global_step_tensor) = modelBuilder.buildOptimizer(answer, answerGates)
+(inputAnswer, loss, optimizer_op, global_step_tensor, gradientsNorm) = modelBuilder.buildOptimizer(answer, answerGates)
 
 with tf.name_scope('validation'):
     #correct = tf.reduce_min(tf.cast(tf.equal(inputAnswer, tf.round(answer)), dtype=tf.float32), axis=1)#bad results since the max entries often don't achieve 0.5 so rounding doesnt work
@@ -145,6 +145,8 @@ training_acc_summary = tf.summary.scalar('training_acc', training_acc_placeholde
 task_acc_summaries = {}
 for task_name in validationData:
     task_acc_summaries[task_name] = tf.summary.scalar('task_acc_' + task_name, task_acc_placeholders[task_name])
+gradients_norm_summary = tf.summary.scalar('gradients_norm', gradientsNorm)
+training_summary = tf.summary.merge([loss_summary, gradients_norm_summary])
 #merged_summaries = tf.summary.merge_all()
 writer = tf.summary.FileWriter(logDir, sess.graph)
 saver = tf.train.Saver()
@@ -187,7 +189,7 @@ def train():
         feed_dict={inputContext: contextInput, inputContextLengths: contextLengths, inputContextSentenceLengths: contextSentenceLengths, inputQuestion: questionInput, inputQuestionLengths: questionLengths, inputAnswer: answerInput}
         #print(sess.run(tf.shape(objects), feed_dict=feed_dict))#debug
         sess.run(optimizer_op, feed_dict=feed_dict)
-        summary, lossVal, batchAcc = sess.run([loss_summary, loss, accuracy], feed_dict=feed_dict)
+        summary, lossVal, batchAcc = sess.run([training_summary, loss, accuracy], feed_dict=feed_dict)
         acc.append(batchAcc)
         writer.add_summary(summary, global_step=i)
         if (i % 50 == 0):
