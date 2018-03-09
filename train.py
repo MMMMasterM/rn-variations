@@ -122,9 +122,10 @@ else:
     print("Invalid model number specified: " + str(modelToUse))
     sys.exit(0)
 
-(answer, answerGates, answerForCorrectness) = modelBuilder.buildAnswerModel(rnOutput)
+#(answer, answerGates, answerForCorrectness) = modelBuilder.buildAnswerModel(rnOutput)
+(answer, answerForCorrectness) = modelBuilder.buildAnswerModel(rnOutput)
 
-(inputAnswer, loss, optimizer_op, global_step_tensor, gradientsNorm) = modelBuilder.buildOptimizer(answer, answerGates)
+(inputAnswer, loss, optimizer_op, global_step_tensor, gradientsNorm) = modelBuilder.buildOptimizer(answer)#, answerGates)
 
 with tf.name_scope('validation'):
     #correct = tf.reduce_min(tf.cast(tf.equal(inputAnswer, tf.round(answer)), dtype=tf.float32), axis=1)#bad results since the max entries often don't achieve 0.5 so rounding doesnt work

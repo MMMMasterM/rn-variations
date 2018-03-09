@@ -524,29 +524,41 @@ class ModelBuilder:
             answer2 = tf.contrib.layers.fully_connected(prevNetworkOutput, self.dictSize)#, activation_fn=tf.nn.relu)#tf.nn.softmax)
             answer3 = tf.contrib.layers.fully_connected(prevNetworkOutput, self.dictSize)#, activation_fn=tf.nn.relu)#tf.nn.softmax)
             #TODO: either make sure prevNetworkOutput doesnt end with a relu or put a relu-free layer before answerGates
-            answerGates = tf.contrib.layers.fully_connected(prevNetworkOutput, 3, activation_fn=tf.sigmoid)#shape=(batch_size, 3)
+            #answerGates = tf.contrib.layers.fully_connected(prevNetworkOutput, 3, activation_fn=tf.sigmoid)#shape=(batch_size, 3)
             answerStack = tf.stack([answer1, answer2, answer3], axis=1)#stack shape=(batch_size, 3, dictSize)
-            answer = tf.reduce_sum(tf.multiply(answerStack, tf.expand_dims(answerGates, axis=2)), axis=1)
+            #answer = tf.reduce_sum(tf.multiply(answerStack, tf.expand_dims(answerGates, axis=2)), axis=1)
+            answer = tf.reduce_mean(answerStack, axis=1)
 
-            #answer1Softmax = tf.nn.softmax(answer1)
-            #answer2Softmax = tf.nn.softmax(answer2)
-            #answer3Softmax = tf.nn.softmax(answer3)
-            #answerSoftmaxStack = tf.stack([answer1Softmax, answer2Softmax, answer3Softmax], axis=1)#stack shape=(batch_size, 3, dictSize)
-            #maxIndices = tf.argmax(tf.multiply(answerSoftmaxStack, tf.expand_dims(answerGates, axis=2)), axis=2)#shape=(batch_size, 3)
-            #maxIndices = tf.argmax(answerSoftmaxStack, axis=2)#shape=(batch_size, 3)
-            maxIndices = tf.argmax(answerStack, axis=2)#shape=(batch_size, 3) #equivalent to tf.argmax(answerSoftmaxStack, ...) because of softmax' monotonicity
-            answersOneHot = tf.one_hot(maxIndices, self.dictSize)#shape=(batch_size, 3, dictSize)
-            binaryGates = tf.round(answerGates)#shape=(batch_size, 3)
-            answerForCorrectness = tf.reduce_sum(tf.multiply(answersOneHot, tf.expand_dims(binaryGates, axis=2)), axis=1)#shape=(batch_size, dictSize)
+            # maxIndices = tf.argmax(answerStack, axis=2)#shape=(batch_size, 3) #equivalent to tf.argmax(answerSoftmaxStack, ...) because of softmax' monotonicity
+            # answersOneHot = tf.one_hot(maxIndices, self.dictSize)#shape=(batch_size, 3, dictSize)
+            # binaryGates = tf.round(answerGates)#shape=(batch_size, 3)
+            # answerForCorrectness = tf.reduce_sum(tf.multiply(answersOneHot, tf.expand_dims(binaryGates, axis=2)), axis=1)#shape=(batch_size, dictSize)
 
-        return answer, answerGates, answerForCorrectness
 
-    def buildOptimizer(self, answer, answerGates):
+            answerSoftmax = tf.nn.softmax(answer)
+            maxIndex = tf.argmax(answerSoftmax, axis=1)
+            answerForCorrectness1 = tf.one_hot(maxIndex, self.dictSize)
+
+            answerSoftmax23 = answerSoftmax - answerForCorrectness1
+            maxIndex2 = tf.argmax(answerSoftmax23, axis=1)
+            answerForCorrectness2 = tf.one_hot(maxIndex2, self.dictSize)
+
+            answerSoftmax3 = answerSoftmax23 - answerForCorrectness2
+            maxIndex3 = tf.argmax(answerSoftmax3, axis=1)
+            answerForCorrectness3 = tf.one_hot(maxIndex3, self.dictSize)
+
+            answerForCorrectness = answerForCorrectness1 + answerForCorrectness2 + answerForCorrectness3
+
+        #return answer, answerGates, answerForCorrectness
+        return answer, answerForCorrectness
+
+    def buildOptimizer(self, answer): #, answerGates):
         with tf.name_scope('optimizer'):
             global_step_tensor = tf.Variable(0, trainable=False, name='global_step')
             inputAnswer = tf.placeholder(tf.float32, shape=(self.batch_size, self.dictSize))#label
+            inputAnswerForLoss = inputAnswer / 3#since they represent the sum of 3 one-hot vectors, normalize to make them a probability distribution for the loss
             #loss = tf.losses.mean_squared_error(labels=inputAnswer, predictions=answer) * dictSize - tf.reduce_mean(tf.square(answerGates - 0.5)) + 0.25#regularization term to enforce gate values close to 0 or 1
-            loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=answer, labels=inputAnswer)) - tf.reduce_mean(tf.square(answerGates - 0.5)) + 0.25#regularization term to enforce gate values close to 0 or 1
+            loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=answer, labels=inputAnswerForLoss))# - tf.reduce_mean(tf.square(answerGates - 0.5)) + 0.25#regularization term to enforce gate values close to 0 or 1
             #softmax_cross_entropy_with_logits is not suitable for outputs that are not probability distributions (which might be a problem for multi-answer questions) - still gives surprisingly good results for a first attempt
             optimizer = tf.train.AdamOptimizer(1e-5)
             #gradient clipping

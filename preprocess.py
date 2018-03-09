@@ -95,6 +95,7 @@ def cqaFromParagraphs(paragraphIter):
                 for i, token in enumerate(tokens):
                     answerVecs[i, token] = 1
                 answer = np.sum(answerVecs, axis=0)
+                answer[0] = 3 - len(tokens)#make sure answer sums to 3 since that is the max word count - also wordIndex 0 is the unused word
                 #add "." tokens at the end of each sentence
                 terminatedContext = [sentence + [wordIndices['.']] for sentence in context]
                 yield terminatedContext, question, answer
