@@ -230,7 +230,7 @@ lastCheckpoint = tf.train.latest_checkpoint(weightsDir)
 if lastCheckpoint is not None:#restore weights
     saver.restore(sess, lastCheckpoint)
     #restore random generator seed for seamless continue after skipping global_step number of batches
-    np.random.seed(sess.run(randomSeedVar))
+    #np.random.seed(sess.run(randomSeedVar))#TODO: fix "uninitialized variable" error on this line
     print('Weights restored.')
 else:#initialize weights
     sess.run(tf.global_variables_initializer())

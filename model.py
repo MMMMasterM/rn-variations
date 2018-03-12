@@ -75,11 +75,13 @@ class ModelBuilder:
 
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                return tf.layers.dense(layerInput, g_dim)#TODO: introduce constant for units count and add more layers
+                g_1 = tf.layers.dense(layerInput, g_dim)
+                return tf.layers.dense(g_1, g_dim)
 
             def build_f(gSum, question):#gSum shape=(batch_size, g_dim)
                 layerInput = gSum
-                return tf.layers.dense(layerInput, f_dim)#TODO: introduce constant for units count and add more layers
+                f_1 = tf.layers.dense(layerInput, f_dim)
+                return tf.layers.dense(f_1, f_dim)
 
             inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
             #questionShape = tf.shape(question)#[0] is batch_size, [1] is question_dim
@@ -209,18 +211,23 @@ class ModelBuilder:
 
             def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                return tf.layers.dense(layerInput, h_dim)#TODO: introduce constant for units count and add more layers
+                h_1 = tf.layers.dense(layerInput, h_dim)
+                return tf.layers.dense(h_1, h_dim)
 
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count*obj_count, 2*h_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                return tf.layers.dense(layerInput, g_dim)#TODO: introduce constant for units count and add more layers
+                g_1 = tf.layers.dense(layerInput, g_dim)
+                return tf.layers.dense(g_1, g_dim)
 
             def build_f_inner(gSum):#gSum2D shape=(batch_size*obj_count*obj_count, g_dim)
-                return tf.layers.dense(gSum, f_inner_dim)#TODO: introduce constant for units count and add more layers
+                layerInput = gSum
+                f_inner_1 = tf.layers.dense(layerInput, f_inner_dim)
+                return tf.layers.dense(f_inner_1, f_inner_dim)
 
             def build_f(gSum, question):#gSum shape=(batch_size, g_dim)
                 layerInput = gSum
-                return tf.layers.dense(layerInput, f_dim)#TODO: introduce constant for units count and add more layers
+                f_1 = tf.layers.dense(layerInput, f_dim)
+                return tf.layers.dense(f_1, f_dim)
 
             inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
             #questionShape = tf.shape(question)#[0] is batch_size, [1] is question_dim
@@ -381,15 +388,18 @@ class ModelBuilder:
 
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                return tf.layers.dense(layerInput, g_dim)#TODO: introduce constant for units count and add more layers
+                g_1 = tf.layers.dense(layerInput, g_dim)
+                return tf.layers.dense(g_1, g_dim)
 
             def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*g_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                return tf.layers.dense(layerInput, h_dim)#TODO: introduce constant for units count and add more layers
+                h_1 = tf.layers.dense(layerInput, h_dim)
+                return tf.layers.dense(h_1, h_dim)
 
             def build_f(hSum, question):#gSum shape=(batch_size, h_dim)
                 layerInput = hSum
-                return tf.layers.dense(layerInput, f_dim)#TODO: introduce constant for units count and add more layers
+                f_1 = tf.layers.dense(layerInput, f_dim)
+                return tf.layers.dense(f_1, f_dim)
 
             inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
             objPairs2D = getCombinations(objects)
@@ -535,7 +545,7 @@ class ModelBuilder:
             # answerForCorrectness = tf.reduce_sum(tf.multiply(answersOneHot, tf.expand_dims(binaryGates, axis=2)), axis=1)#shape=(batch_size, dictSize)
 
 
-            answerSoftmax = tf.nn.softmax(answer)
+            answerSoftmax = tf.nn.softmax(answer) * 3
             maxIndex = tf.argmax(answerSoftmax, axis=1)
             answerForCorrectness1 = tf.one_hot(maxIndex, self.dictSize)
 
@@ -564,7 +574,7 @@ class ModelBuilder:
             #gradient clipping
             gradients, variables = zip(*optimizer.compute_gradients(loss))
             gradientsNorm = tf.global_norm(gradients)#for logging purposes - keep this line before clipping
-            gradients, _ = tf.clip_by_global_norm(gradients, 5.0)
+            gradients, _ = tf.clip_by_global_norm(gradients, 50.0)
             optimizer_op = optimizer.apply_gradients(zip(gradients, variables), global_step=global_step_tensor)
             #optimizer_op = tf.train.AdamOptimizer(1e-5).minimize(loss)#without gradient clipping
 
