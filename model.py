@@ -71,17 +71,21 @@ class ModelBuilder:
         with tf.name_scope('RN_I'):
             #model parameters
             g_dim = 256
+            g_layers = 3
             f_dim = 256
+            f_layers = 3
 
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                g_1 = tf.layers.dense(layerInput, g_dim, activation=tf.nn.relu)
-                return tf.layers.dense(g_1, g_dim)
+                for i in range(g_layers-1):
+                    layerInput = tf.layers.dense(layerInput, g_dim, activation=tf.nn.relu)
+                return tf.layers.dense(layerInput, g_dim)
 
             def build_f(gSum, question):#gSum shape=(batch_size, g_dim)
                 layerInput = gSum
-                f_1 = tf.layers.dense(layerInput, f_dim, activation=tf.nn.relu)
-                return tf.layers.dense(f_1, f_dim)
+                for i in range(f_layers-1):
+                    layerInput = tf.layers.dense(layerInput, f_dim, activation=tf.nn.relu)
+                return tf.layers.dense(layerInput, f_dim)
 
             inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
             #questionShape = tf.shape(question)#[0] is batch_size, [1] is question_dim
@@ -100,15 +104,21 @@ class ModelBuilder:
         with tf.name_scope('RN_II'):
             #model parameters
             g_dim = 256
+            g_layers = 3
             f_dim = 256
+            f_layers = 3
 
             def build_g(objTriples, question):#objPairs shape=(batch_size*obj_count*obj_count*obj_count, 3*obj_dim)
                 layerInput = tf.concat([objTriples, question], 1)
-                return tf.layers.dense(layerInput, g_dim)#TODO: introduce constant for units count and add more layers
+                for i in range(g_layers-1):
+                    layerInput = tf.layers.dense(layerInput, g_dim, activation=tf.nn.relu)
+                return tf.layers.dense(layerInput, g_dim)
 
             def build_f(gSum, question):#gSum shape=(batch_size, g_dim)
                 layerInput = gSum
-                return tf.layers.dense(layerInput, f_dim)#TODO: introduce constant for units count and add more layers
+                for i in range(f_layers-1):
+                    layerInput = tf.layers.dense(layerInput, f_dim, activation=tf.nn.relu)
+                return tf.layers.dense(layerInput, f_dim)
 
             inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
             #questionShape = tf.shape(question)#[0] is batch_size, [1] is question_dim
@@ -127,20 +137,29 @@ class ModelBuilder:
         with tf.name_scope('RN_III'):
             #model parameters
             h_dim = 256
+            h_layers = 3
             g_dim = 256
+            g_layers = 3
             f_dim = 256
+            f_layers = 3
 
             def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                return tf.layers.dense(layerInput, h_dim)#TODO: introduce constant for units count and add more layers
+                for i in range(h_layers-1):
+                    layerInput = tf.layers.dense(layerInput, h_dim, activation=tf.nn.relu)
+                return tf.layers.dense(layerInput, h_dim)
 
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count*obj_count, h_dim+obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                return tf.layers.dense(layerInput, g_dim)#TODO: introduce constant for units count and add more layers
+                for i in range(g_layers-1):
+                    layerInput = tf.layers.dense(layerInput, g_dim, activation=tf.nn.relu)
+                return tf.layers.dense(layerInput, g_dim)
 
             def build_f(gSum, question):#gSum shape=(batch_size, g_dim)
                 layerInput = gSum
-                return tf.layers.dense(layerInput, f_dim)#TODO: introduce constant for units count and add more layers
+                for i in range(f_layers-1):
+                    layerInput = tf.layers.dense(layerInput, f_dim, activation=tf.nn.relu)
+                return tf.layers.dense(layerInput, f_dim)
 
             inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
             #questionShape = tf.shape(question)#[0] is batch_size, [1] is question_dim
@@ -166,20 +185,29 @@ class ModelBuilder:
         with tf.name_scope('RN_IV'):
             #model parameters
             h_dim = 256
+            h_layers = 3
             g_dim = 256
+            g_layers = 3
             f_dim = 256
+            f_layers = 3
 
             def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                return tf.layers.dense(layerInput, h_dim)#TODO: introduce constant for units count and add more layers
+                for i in range(h_layers-1):
+                    layerInput = tf.layers.dense(layerInput, h_dim, activation=tf.nn.relu)
+                return tf.layers.dense(layerInput, h_dim)
 
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count*obj_count, 2*h_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                return tf.layers.dense(layerInput, g_dim)#TODO: introduce constant for units count and add more layers
+                for i in range(g_layers-1):
+                    layerInput = tf.layers.dense(layerInput, g_dim, activation=tf.nn.relu)
+                return tf.layers.dense(layerInput, g_dim)
 
             def build_f(gSum, question):#gSum shape=(batch_size, g_dim)
                 layerInput = gSum
-                return tf.layers.dense(layerInput, f_dim)#TODO: introduce constant for units count and add more layers
+                for i in range(f_layers-1):
+                    layerInput = tf.layers.dense(layerInput, f_dim, activation=tf.nn.relu)
+                return tf.layers.dense(layerInput, f_dim)
 
             inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
             #questionShape = tf.shape(question)#[0] is batch_size, [1] is question_dim
@@ -205,29 +233,37 @@ class ModelBuilder:
         with tf.name_scope('RN_V'):
             #model parameters
             h_dim = 256
+            h_layers = 3
             g_dim = 256
+            g_layers = 3
             f_inner_dim = 256
+            f_inner_layers = 3
             f_dim = 256
+            f_layers = 3
 
             def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                h_1 = tf.layers.dense(layerInput, h_dim, activation=tf.nn.relu)
-                return tf.layers.dense(h_1, h_dim)
+                for i in range(h_layers-1):
+                    layerInput = tf.layers.dense(layerInput, h_dim, activation=tf.nn.relu)
+                return tf.layers.dense(layerInput, h_dim)
 
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count*obj_count, 2*h_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                g_1 = tf.layers.dense(layerInput, g_dim, activation=tf.nn.relu)
-                return tf.layers.dense(g_1, g_dim)
+                for i in range(g_layers-1):
+                    layerInput = tf.layers.dense(layerInput, g_dim, activation=tf.nn.relu)
+                return tf.layers.dense(layerInput, g_dim)
 
             def build_f_inner(gSum):#gSum2D shape=(batch_size*obj_count*obj_count, g_dim)
                 layerInput = gSum
-                f_inner_1 = tf.layers.dense(layerInput, f_inner_dim, activation=tf.nn.relu)
-                return tf.layers.dense(f_inner_1, f_inner_dim)
+                for i in range(f_inner_layers-1):
+                    layerInput = tf.layers.dense(layerInput, f_inner_dim, activation=tf.nn.relu)
+                return tf.layers.dense(layerInput, f_inner_dim)
 
             def build_f(gSum, question):#gSum shape=(batch_size, g_dim)
                 layerInput = gSum
-                f_1 = tf.layers.dense(layerInput, f_dim, activation=tf.nn.relu)
-                return tf.layers.dense(f_1, f_dim)
+                for i in range(f_layers-1):
+                    layerInput = tf.layers.dense(layerInput, f_dim, activation=tf.nn.relu)
+                return tf.layers.dense(layerInput, f_dim)
 
             inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
             #questionShape = tf.shape(question)#[0] is batch_size, [1] is question_dim
@@ -258,24 +294,37 @@ class ModelBuilder:
         with tf.name_scope('RN_VI'):
             #model parameters
             h_dim = 256
+            h_layers = 3
             g_dim = 256
+            g_layers = 3
             f_inner_dim = 256
+            f_inner_layers = 3
             f_dim = 256
+            f_layers = 3
 
             def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                return tf.layers.dense(layerInput, h_dim)#TODO: introduce constant for units count and add more layers
+                for i in range(h_layers-1):
+                    layerInput = tf.layers.dense(layerInput, h_dim, activation=tf.nn.relu)
+                return tf.layers.dense(layerInput, h_dim)
 
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count*obj_count, 2*h_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                return tf.layers.dense(layerInput, g_dim)#TODO: introduce constant for units count and add more layers
+                for i in range(g_layers-1):
+                    layerInput = tf.layers.dense(layerInput, g_dim, activation=tf.nn.relu)
+                return tf.layers.dense(layerInput, g_dim)
 
             def build_f_inner(gSum):#gSum2D shape=(batch_size*obj_count, g_dim)
-                return tf.layers.dense(gSum, f_inner_dim)#TODO: introduce constant for units count and add more layers
+                layerInput = gSum
+                for i in range(f_inner_layers-1):
+                    layerInput = tf.layers.dense(layerInput, f_inner_dim, activation=tf.nn.relu)
+                return tf.layers.dense(layerInput, f_inner_dim)
 
             def build_f(gSum, question):#gSum shape=(batch_size, g_dim)
                 layerInput = gSum
-                return tf.layers.dense(layerInput, f_dim)#TODO: introduce constant for units count and add more layers
+                for i in range(f_layers-1):
+                    layerInput = tf.layers.dense(layerInput, f_dim, activation=tf.nn.relu)
+                return tf.layers.dense(layerInput, f_dim)
 
             inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
             #questionShape = tf.shape(question)#[0] is batch_size, [1] is question_dim
@@ -306,20 +355,29 @@ class ModelBuilder:
         with tf.name_scope('RN_VII_jl'):
             #model parameters
             h_dim = 256
+            h_layers = 3
             g_dim = 256
+            g_layers = 3
             f_dim = 256
+            f_layers = 3
 
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                return tf.layers.dense(layerInput, g_dim)#TODO: introduce constant for units count and add more layers
+                for i in range(g_layers-1):
+                    layerInput = tf.layers.dense(layerInput, g_dim, activation=tf.nn.relu)
+                return tf.layers.dense(layerInput, g_dim)
 
             def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*g_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                return tf.layers.dense(layerInput, h_dim)#TODO: introduce constant for units count and add more layers
+                for i in range(h_layers-1):
+                    layerInput = tf.layers.dense(layerInput, h_dim, activation=tf.nn.relu)
+                return tf.layers.dense(layerInput, h_dim)
 
             def build_f(hSum, question):#gSum shape=(batch_size, g_dim)
                 layerInput = hSum
-                return tf.layers.dense(layerInput, f_dim)#TODO: introduce constant for units count and add more layers
+                for i in range(f_layers-1):
+                    layerInput = tf.layers.dense(layerInput, f_dim, activation=tf.nn.relu)
+                return tf.layers.dense(layerInput, f_dim)
 
             inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
             objPairs2D = getCombinations(objects)
@@ -345,20 +403,29 @@ class ModelBuilder:
         with tf.name_scope('RN_VII_jk'):
             #model parameters
             h_dim = 256
+            h_layers = 3
             g_dim = 256
+            g_layers = 3
             f_dim = 256
+            f_layers = 3
 
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                return tf.layers.dense(layerInput, g_dim)#TODO: introduce constant for units count and add more layers
+                for i in range(g_layers-1):
+                    layerInput = tf.layers.dense(layerInput, g_dim, activation=tf.nn.relu)
+                return tf.layers.dense(layerInput, g_dim)
 
             def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*g_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                return tf.layers.dense(layerInput, h_dim)#TODO: introduce constant for units count and add more layers
+                for i in range(h_layers-1):
+                    layerInput = tf.layers.dense(layerInput, h_dim, activation=tf.nn.relu)
+                return tf.layers.dense(layerInput, h_dim)
 
             def build_f(hSum, question):#gSum shape=(batch_size, h_dim)
                 layerInput = hSum
-                return tf.layers.dense(layerInput, f_dim)#TODO: introduce constant for units count and add more layers
+                for i in range(f_layers-1):
+                    layerInput = tf.layers.dense(layerInput, f_dim, activation=tf.nn.relu)
+                return tf.layers.dense(layerInput, f_dim)
 
             inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
             objPairs2D = getCombinations(objects)
@@ -383,23 +450,29 @@ class ModelBuilder:
         with tf.name_scope('RN_VIII_jl'):
             #model parameters
             h_dim = 256
+            h_layers = 3
             g_dim = 256
+            g_layers = 3
             f_dim = 256
+            f_layers = 3
 
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                g_1 = tf.layers.dense(layerInput, g_dim, activation=tf.nn.relu)
-                return tf.layers.dense(g_1, g_dim)
+                for i in range(g_layers-1):
+                    layerInput = tf.layers.dense(layerInput, g_dim, activation=tf.nn.relu)
+                return tf.layers.dense(layerInput, g_dim)
 
             def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*g_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                h_1 = tf.layers.dense(layerInput, h_dim, activation=tf.nn.relu)
-                return tf.layers.dense(h_1, h_dim)
+                for i in range(h_layers-1):
+                    layerInput = tf.layers.dense(layerInput, h_dim, activation=tf.nn.relu)
+                return tf.layers.dense(layerInput, h_dim)
 
             def build_f(hSum, question):#gSum shape=(batch_size, h_dim)
                 layerInput = hSum
-                f_1 = tf.layers.dense(layerInput, f_dim, activation=tf.nn.relu)
-                return tf.layers.dense(f_1, f_dim)
+                for i in range(f_layers-1):
+                    layerInput = tf.layers.dense(layerInput, f_dim, activation=tf.nn.relu)
+                return tf.layers.dense(layerInput, f_dim)
 
             inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
             objPairs2D = getCombinations(objects)
@@ -431,20 +504,29 @@ class ModelBuilder:
         with tf.name_scope('RN_VIII_jk'):
             #model parameters
             h_dim = 256
+            h_layers = 3
             g_dim = 256
+            g_layers = 3
             f_dim = 256
+            f_layers = 3
 
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                return tf.layers.dense(layerInput, g_dim)#TODO: introduce constant for units count and add more layers
+                for i in range(g_layers-1):
+                    layerInput = tf.layers.dense(layerInput, g_dim, activation=tf.nn.relu)
+                return tf.layers.dense(layerInput, g_dim)
 
             def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*g_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                return tf.layers.dense(layerInput, h_dim)#TODO: introduce constant for units count and add more layers
+                for i in range(h_layers-1):
+                    layerInput = tf.layers.dense(layerInput, h_dim, activation=tf.nn.relu)
+                return tf.layers.dense(layerInput, h_dim)
 
             def build_f(hSum, question):#gSum shape=(batch_size, h_dim)
                 layerInput = hSum
-                return tf.layers.dense(layerInput, f_dim)#TODO: introduce constant for units count and add more layers
+                for i in range(f_layers-1):
+                    layerInput = tf.layers.dense(layerInput, f_dim, activation=tf.nn.relu)
+                return tf.layers.dense(layerInput, f_dim)
 
             inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
             objPairs2D = getCombinations(objects)
@@ -574,7 +656,7 @@ class ModelBuilder:
             #gradient clipping
             gradients, variables = zip(*optimizer.compute_gradients(loss))
             gradientsNorm = tf.global_norm(gradients)#for logging purposes - keep this line before clipping
-            gradients, _ = tf.clip_by_global_norm(gradients, 50.0)
+            gradients, _ = tf.clip_by_global_norm(gradients, 250.0)#threshold selected as average norm * 5
             optimizer_op = optimizer.apply_gradients(zip(gradients, variables), global_step=global_step_tensor)
             #optimizer_op = tf.train.AdamOptimizer(1e-5).minimize(loss)#without gradient clipping
 

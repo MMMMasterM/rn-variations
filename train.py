@@ -25,7 +25,7 @@ with open(os.path.join('processeddata', 'valid.txt'), 'rb') as f:
 
 #training parameters
 batch_size = 1#32
-epoch_count = 20
+epoch_count = 40
 
 question_dim = 256
 obj_dim = 256

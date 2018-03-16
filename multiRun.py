@@ -20,8 +20,9 @@ print("gpuList: " + str(gpuList))
 #array of parameter lists to hand to train.py
 runList = [
     [1],#run1
-    [5],#run2
-    [8, 3]#run3
+    [8, 3],#run2
+    [5],#run3
+    [2]#run4
 ]
 
 nextWorkItem = 0
