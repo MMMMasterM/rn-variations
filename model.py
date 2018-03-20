@@ -644,15 +644,22 @@ class ModelBuilder:
         #return answer, answerGates, answerForCorrectness
         return answer, answerForCorrectness
 
-    def buildOptimizer(self, answer): #, answerGates):
+    def buildOptimizer(self, answer, optimizerAlg): #, answerGates):
         with tf.name_scope('optimizer'):
             global_step_tensor = tf.Variable(0, trainable=False, name='global_step')
             inputAnswer = tf.placeholder(tf.float32, shape=(self.batch_size, self.dictSize))#label
+            learningRate = tf.placeholder(tf.float32, shape=())
             inputAnswerForLoss = inputAnswer / 3#since they represent the sum of 3 one-hot vectors, normalize to make them a probability distribution for the loss
             #loss = tf.losses.mean_squared_error(labels=inputAnswer, predictions=answer) * dictSize - tf.reduce_mean(tf.square(answerGates - 0.5)) + 0.25#regularization term to enforce gate values close to 0 or 1
             loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=answer, labels=inputAnswerForLoss))# - tf.reduce_mean(tf.square(answerGates - 0.5)) + 0.25#regularization term to enforce gate values close to 0 or 1
             #softmax_cross_entropy_with_logits is not suitable for outputs that are not probability distributions (which might be a problem for multi-answer questions) - still gives surprisingly good results for a first attempt
-            optimizer = tf.train.AdamOptimizer(1e-5)
+            if optimizerAlg == 'nesterov':
+                optimizer = tf.train.MomentumOptimizer(learningRate, 0.9, use_nesterov=True)
+                print('Using nesterov')
+            else:
+                optimizer = tf.train.AdamOptimizer(learningRate)
+                print('Using adam')
+            #optimizer = tf.train.AdamOptimizer(1e-5)
             #gradient clipping
             gradients, variables = zip(*optimizer.compute_gradients(loss))
             gradientsNorm = tf.global_norm(gradients)#for logging purposes - keep this line before clipping
@@ -660,4 +667,4 @@ class ModelBuilder:
             optimizer_op = optimizer.apply_gradients(zip(gradients, variables), global_step=global_step_tensor)
             #optimizer_op = tf.train.AdamOptimizer(1e-5).minimize(loss)#without gradient clipping
 
-        return inputAnswer, loss, optimizer_op, global_step_tensor, gradientsNorm
+        return inputAnswer, loss, optimizer_op, global_step_tensor, gradientsNorm, learningRate

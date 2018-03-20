@@ -1,15 +1,11 @@
 import tensorflow as tf
 import numpy as np
 import os, pickle, sys
+import argparse
 from itertools import islice
 #from model import buildRN_I, buildRN_II, buildRN_III, buildRN_IV, buildRN_V, buildRN_VI, buildRN_VII_jl, buildRN_VII_jk, buildRN_VIII_jl, buildRN_VIII_jk, buildWordProcessorLSTMs, buildAnswerModel, buildOptimizer
 from model import ModelBuilder
-
-logDir = os.path.join('log', '_'.join(sys.argv[1:]))
-try:
-    os.stat(logDir)
-except:
-    os.mkdir(logDir)
+import math
 
 #load dictionary
 with open(os.path.join('processeddata', 'dictionary.txt'), 'rb') as f:
@@ -23,20 +19,39 @@ with open(os.path.join('processeddata', 'train.txt'), 'rb') as f:
 with open(os.path.join('processeddata', 'valid.txt'), 'rb') as f:
     validationData = pickle.load(f)
 
+enabledWeightSaveRestore = False
+
 #training parameters
 batch_size = 1#32
-epoch_count = 40
+epoch_count = 40#only two epochs to determine good min/max 
 
 question_dim = 256
 obj_dim = 256
 
+parser = argparse.ArgumentParser()
+parser.add_argument('modelToUse', metavar='modelToUse', type=int, nargs='?', default=1)
+parser.add_argument('--layers', type=int, default=0)
+parser.add_argument('--optimizer', default='adam')
+parser.add_argument('--clr', action='store_true')#Cyclical learning rate
+parser.add_argument('--learningRate', type=float, default=1e-5)
+args = parser.parse_args()
+
 #parse which RN to use
-modelToUse = 1
-layerCount = 0#only relevant for RN VIII
-if len(sys.argv) >= 2:
-    modelToUse = int(sys.argv[1])
-    if len(sys.argv) >= 3:
-        layerCount = int(sys.argv[2])
+modelToUse = args.modelToUse
+layerCount = args.layers#0#only relevant for RN VIII
+# if len(sys.argv) >= 2:
+#     modelToUse = int(sys.argv[1])
+#     if len(sys.argv) >= 3:
+#         layerCount = int(sys.argv[2])
+if args.optimizer != 'adam' and args.optimizer != 'nesterov':
+    print('Optimizer must be one of [adam, nesterov]')
+    exit()
+
+logDir = os.path.join('log', str(modelToUse) + '_' + str(layerCount) + '_' + args.optimizer + '_' + str(args.clr) + '_' + str(args.learningRate))
+try:
+    os.stat(logDir)
+except:
+    os.mkdir(logDir)
 
 #determine appropriate batch size for chosen model
 if modelToUse == 1 or modelToUse == 7 or modelToUse == 8:
@@ -46,13 +61,9 @@ else:
     print("Using batch_size=1 for models with cubic complexity")
     batch_size = 1
 
-sess = tf.Session()
+clr_stepsize = math.floor(4 * len(trainingData) / batch_size)#as per recommendation in the CLR paper (https://arxiv.org/pdf/1506.01186.pdf), 2-10 times the number of iterations in an epoch
 
-# testTensorA = tf.constant([[[1, 2, 3, 4, 5, 6, 7], [8, 9, 10, 11, 12, 13, 14]]])
-# testTensorB = tf.constant([[[21, 22, 23, 24, 25, 26, 27], [28, 29, 30, 31, 32, 33, 34]]])
-# testTensorC = tf.constant([[[1, 2, 3, 4, 5, 6, 7], [8, 9, 10, 11, 12, 13, 14]], [[21, 22, 23, 24, 25, 26, 27], [28, 29, 30, 31, 32, 33, 34]]])
-# #testObjCount = tf.constant(2)
-# resTensorB = tf.reshape(testTensorA, shape=(7, 2))
+sess = tf.Session()
 
 #utility functions
 def getIndices(dataset, epochs):#generate indices over all epochs
@@ -74,7 +85,7 @@ def getBatches(dataset, epochs):#generate batches of data
         contextLengths = [len(context) for context, question, answer in samples]
         maxContextLen = max(contextLengths)
         #Debug print: 
-        if maxContextLen >= 100 and batch_size == 1:
+        if maxContextLen >= 100: # and batch_size == 1:
             print('Warning, large context detected: ' + str(maxContextLen) + ' skipping...')
             continue
         contextSentenceLengths = [[len(sentence) for sentence in context] for context, question, answer in samples]
@@ -125,7 +136,7 @@ else:
 #(answer, answerGates, answerForCorrectness) = modelBuilder.buildAnswerModel(rnOutput)
 (answer, answerForCorrectness) = modelBuilder.buildAnswerModel(rnOutput)
 
-(inputAnswer, loss, optimizer_op, global_step_tensor, gradientsNorm) = modelBuilder.buildOptimizer(answer)#, answerGates)
+(inputAnswer, loss, optimizer_op, global_step_tensor, gradientsNorm, learningRate) = modelBuilder.buildOptimizer(answer, args.optimizer)#, answerGates)
 
 with tf.name_scope('validation'):
     #correct = tf.reduce_min(tf.cast(tf.equal(inputAnswer, tf.round(answer)), dtype=tf.float32), axis=1)#bad results since the max entries often don't achieve 0.5 so rounding doesnt work
@@ -187,7 +198,14 @@ def train():
     if first_global_step > 0:
         print('Skipping forward to global_step ' + str(first_global_step))
     for i, (contextInput, contextLengths, contextSentenceLengths, questionInput, questionLengths, answerInput) in islice(enumerate(getBatches(trainingData, epoch_count)), first_global_step, None):
-        feed_dict={inputContext: contextInput, inputContextLengths: contextLengths, inputContextSentenceLengths: contextSentenceLengths, inputQuestion: questionInput, inputQuestionLengths: questionLengths, inputAnswer: answerInput}
+        if args.clr:
+            x = 1 - abs((i % (2*clr_stepsize)) / clr_stepsize - 1)#periodic triangle function, starting with 0
+            minLR = 0.00001
+            maxLR = 0.02
+            lr = args.learningRate#TODO: implement clr
+        else:
+            lr = args.learningRate
+        feed_dict={inputContext: contextInput, inputContextLengths: contextLengths, inputContextSentenceLengths: contextSentenceLengths, inputQuestion: questionInput, inputQuestionLengths: questionLengths, inputAnswer: answerInput, learningRate: lr}
         #print(sess.run(tf.shape(objects), feed_dict=feed_dict))#debug
         sess.run(optimizer_op, feed_dict=feed_dict)
         summary, lossVal, batchAcc = sess.run([training_summary, loss, accuracy], feed_dict=feed_dict)
@@ -204,46 +222,47 @@ def train():
             writer.add_summary(summary, global_step=i)
             print('Training accuracy: ' + str(trainAcc))
             #save model weights
-            saver.save(sess, weightsPath, global_step=global_step_tensor)
-            print('Model saved.')
+            if enabledWeightSaveRestore:
+                saver.save(sess, weightsPath, global_step=global_step_tensor)
+                print('Model saved.')
             #run validation
             runValidation()
 
-try:
-    os.stat('weights')
-except:
-    os.mkdir('weights')
-weightsDir = os.path.join('weights', '_'.join(sys.argv[1:]))
-try:
-    os.stat(weightsDir)
-except:
-    os.mkdir(weightsDir)
+if enabledWeightSaveRestore:
+    try:
+        os.stat('weights')
+    except:
+        os.mkdir('weights')
+    weightsDir = os.path.join('weights', '_'.join(sys.argv[1:]))
+    try:
+        os.stat(weightsDir)
+    except:
+        os.mkdir(weightsDir)
 
-weightsPath = os.path.join(weightsDir, 'model.ckpt')
+    weightsPath = os.path.join(weightsDir, 'model.ckpt')
 
-#generate new random generator seed to store
-randomSeed = np.random.randint(2**16)
-np.random.seed(randomSeed)
-randomSeedVar = tf.Variable(randomSeed, trainable=False, name='randomSeedVar', dtype=tf.int32)
+    #generate new random generator seed to store
+    randomSeed = np.random.randint(2**16)
+    np.random.seed(randomSeed)
+    randomSeedVar = tf.Variable(randomSeed, trainable=False, name='randomSeedVar', dtype=tf.int32)
 
-lastCheckpoint = tf.train.latest_checkpoint(weightsDir)
-if lastCheckpoint is not None:#restore weights
-    saver.restore(sess, lastCheckpoint)
-    #restore random generator seed for seamless continue after skipping global_step number of batches
-    #np.random.seed(sess.run(randomSeedVar))#TODO: fix "uninitialized variable" error on this line
-    print('Weights restored.')
-else:#initialize weights
+    lastCheckpoint = tf.train.latest_checkpoint(weightsDir)
+    if lastCheckpoint is not None:#restore weights
+        saver.restore(sess, lastCheckpoint)
+        #restore random generator seed for seamless continue after skipping global_step number of batches
+        #np.random.seed(sess.run(randomSeedVar))#TODO: fix "uninitialized variable" error on this line
+        print('Weights restored.')
+    else:#initialize weights
+        sess.run(tf.global_variables_initializer())
+        print('Weights initialized.')
+else:
     sess.run(tf.global_variables_initializer())
     print('Weights initialized.')
 
 train()
 
-saver.save(sess, weightsPath)
-print('Training finished. Model saved.')
-
-#print(sess.run(resTensorB))
-# print(sess.run(getHeteroCombinations(testTensorC, testTensorC)))
-# print(sess.run(getCombinations(testTensorC)))
-# print(sess.run(getTransitiveCombine(getCombinations(testTensorC))))
-
-# print(sess.run(getTripleCombinations(testTensorC)))
+if enabledWeightSaveRestore:
+    saver.save(sess, weightsPath)
+    print('Training finished. Model saved.')
+else:
+    print('Training finished.')

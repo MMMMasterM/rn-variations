@@ -19,10 +19,19 @@ print("gpuList: " + str(gpuList))
 
 #array of parameter lists to hand to train.py
 runList = [
-    [1],#run1
-    [8, 3],#run2
-    [5],#run3
-    [2]#run4
+    [8, '--layers', 3, '--learningRate', 0.00001],
+    [8, '--layers', 3, '--learningRate', 0.00001, '--optimizer', 'nesterov'],
+    [8, '--layers', 3, '--learningRate', 0.0001],
+    [8, '--layers', 3, '--learningRate', 0.0001, '--optimizer', 'nesterov'],
+    [8, '--layers', 3, '--learningRate', 0.001],
+    [8, '--layers', 3, '--learningRate', 0.001, '--optimizer', 'nesterov'],
+    [8, '--layers', 3, '--learningRate', 0.01],
+    [8, '--layers', 3, '--learningRate', 0.01, '--optimizer', 'nesterov']
+
+    #[1],#run1
+    #[8, 3],#run2
+    #[5],#run3
+    #[2]#run4
 ]
 
 nextWorkItem = 0
