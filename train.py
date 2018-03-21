@@ -202,7 +202,7 @@ def train():
             x = 1 - abs((i % (2*clr_stepsize)) / clr_stepsize - 1)#periodic triangle function, starting with 0
             minLR = 0.00001
             maxLR = 0.02
-            lr = args.learningRate#TODO: implement clr
+            lr = minLR + (maxLR - minLR) * x
         else:
             lr = args.learningRate
         feed_dict={inputContext: contextInput, inputContextLengths: contextLengths, inputContextSentenceLengths: contextSentenceLengths, inputQuestion: questionInput, inputQuestionLengths: questionLengths, inputAnswer: answerInput, learningRate: lr}

@@ -603,6 +603,16 @@ class ModelBuilder:
             sentenceLSTMoutputs = tf.gather(sentenceLSTMoutputs, sSeqEndSelector)#shape=(batch_size*contextMaxLength, sLstmHiddenUnits)
             sentenceLSTMoutputs = tf.reshape(sentenceLSTMoutputs, shape=(self.batch_size, inputContextMaxLength, sLstmHiddenUnits))#these are the objects for the relation network input
 
+            #tag sentences with position encodings to give information about their order of occurrance in the context (position encoding: https://arxiv.org/pdf/1503.08895.pdf)
+            tagMatrixJ = tf.range(1, tf.cast(inputContextMaxLength + 1, tf.float32), dtype=tf.float32) / tf.cast(inputContextMaxLength, tf.float32)
+            tagMatrixK = tf.range(1, sLstmHiddenUnits + 1, dtype=tf.float32) / sLstmHiddenUnits
+            tagMatrixTerm1 = 1 - tf.tile(tf.expand_dims(tagMatrixJ, axis=1), [1, sLstmHiddenUnits])#shape=(inputContextMaxLength, sLstmHiddenUnits)
+            tagMatrixTerm2 = tf.tile(tf.expand_dims(tagMatrixK, axis=0), [inputContextMaxLength, 1])#shape=(inputContextMaxLength, sLstmHiddenUnits)
+            tagMatrixTerm3 = tagMatrixTerm1 * 2 - 1
+            tagMatrix = tagMatrixTerm1 - tagMatrixTerm2 * tagMatrixTerm3#shape=(inputContextMaxLength, sLstmHiddenUnits)
+            tagMatrix = tf.tile(tf.expand_dims(tagMatrix, axis=0), [self.batch_size, 1, 1])#shape=(batch_size, inputContextMaxLength, sLstmHiddenUnits)
+            sentenceLSTMoutputs = sentenceLSTMoutputs * tagMatrix
+
             #TODO: optimization: dont apply the LSTMs to the padding-sentences (empty sentences added to make all contexts in a batch the same sentence-count)
 
         #return inputContext, inputContextLengths, inputQuestion, inputQuestionLengths, answer, answerGates
