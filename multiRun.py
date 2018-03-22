@@ -19,14 +19,15 @@ print("gpuList: " + str(gpuList))
 
 #array of parameter lists to hand to train.py
 runList = [
+    [8, '--layers', 3, '--learningRate', 0.000005],
     [8, '--layers', 3, '--learningRate', 0.00001],
-    [8, '--layers', 3, '--learningRate', 0.00001, '--optimizer', 'nesterov'],
+    [8, '--layers', 3, '--learningRate', 0.000033],
     [8, '--layers', 3, '--learningRate', 0.0001],
-    [8, '--layers', 3, '--learningRate', 0.0001, '--optimizer', 'nesterov'],
-    [8, '--layers', 3, '--learningRate', 0.001],
-    [8, '--layers', 3, '--learningRate', 0.001, '--optimizer', 'nesterov'],
-    [8, '--layers', 3, '--learningRate', 0.01],
-    [8, '--layers', 3, '--learningRate', 0.01, '--optimizer', 'nesterov']
+    [8, '--layers', 3, '--learningRate', 0.0002],
+    [8, '--layers', 3, '--learningRate', 0.000005, '--optimizer', 'nesterov'],
+    [8, '--layers', 3, '--learningRate', 0.00001, '--optimizer', 'nesterov'],
+    [8, '--layers', 3, '--learningRate', 0.00002, '--optimizer', 'nesterov'],
+    [8, '--layers', 3, '--learningRate', 0.000002, '--optimizer', 'nesterov'],
 
     #[1],#run1
     #[8, 3],#run2
