@@ -78,14 +78,14 @@ class ModelBuilder:
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
                 for i in range(g_layers-1):
-                    layerInput = tf.layers.dense(layerInput, g_dim, activation=tf.nn.relu)
-                return tf.layers.dense(layerInput, g_dim)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim)
+                return tf.contrib.layers.fully_connected(layerInput, g_dim)
 
             def build_f(gSum, question):#gSum shape=(batch_size, g_dim)
                 layerInput = gSum
                 for i in range(f_layers-1):
-                    layerInput = tf.layers.dense(layerInput, f_dim, activation=tf.nn.relu)
-                return tf.layers.dense(layerInput, f_dim)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim)
+                return tf.contrib.layers.fully_connected(layerInput, f_dim)
 
             inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
             #questionShape = tf.shape(question)#[0] is batch_size, [1] is question_dim
@@ -111,14 +111,14 @@ class ModelBuilder:
             def build_g(objTriples, question):#objPairs shape=(batch_size*obj_count*obj_count*obj_count, 3*obj_dim)
                 layerInput = tf.concat([objTriples, question], 1)
                 for i in range(g_layers-1):
-                    layerInput = tf.layers.dense(layerInput, g_dim, activation=tf.nn.relu)
-                return tf.layers.dense(layerInput, g_dim)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim)
+                return tf.contrib.layers.fully_connected(layerInput, g_dim)
 
             def build_f(gSum, question):#gSum shape=(batch_size, g_dim)
                 layerInput = gSum
                 for i in range(f_layers-1):
-                    layerInput = tf.layers.dense(layerInput, f_dim, activation=tf.nn.relu)
-                return tf.layers.dense(layerInput, f_dim)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim)
+                return tf.contrib.layers.fully_connected(layerInput, f_dim)
 
             inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
             #questionShape = tf.shape(question)#[0] is batch_size, [1] is question_dim
@@ -146,20 +146,20 @@ class ModelBuilder:
             def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
                 for i in range(h_layers-1):
-                    layerInput = tf.layers.dense(layerInput, h_dim, activation=tf.nn.relu)
-                return tf.layers.dense(layerInput, h_dim)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, h_dim)
+                return tf.contrib.layers.fully_connected(layerInput, h_dim)
 
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count*obj_count, h_dim+obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
                 for i in range(g_layers-1):
-                    layerInput = tf.layers.dense(layerInput, g_dim, activation=tf.nn.relu)
-                return tf.layers.dense(layerInput, g_dim)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim)
+                return tf.contrib.layers.fully_connected(layerInput, g_dim)
 
             def build_f(gSum, question):#gSum shape=(batch_size, g_dim)
                 layerInput = gSum
                 for i in range(f_layers-1):
-                    layerInput = tf.layers.dense(layerInput, f_dim, activation=tf.nn.relu)
-                return tf.layers.dense(layerInput, f_dim)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim)
+                return tf.contrib.layers.fully_connected(layerInput, f_dim)
 
             inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
             #questionShape = tf.shape(question)#[0] is batch_size, [1] is question_dim
@@ -194,20 +194,20 @@ class ModelBuilder:
             def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
                 for i in range(h_layers-1):
-                    layerInput = tf.layers.dense(layerInput, h_dim, activation=tf.nn.relu)
-                return tf.layers.dense(layerInput, h_dim)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, h_dim)
+                return tf.contrib.layers.fully_connected(layerInput, h_dim)
 
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count*obj_count, 2*h_dim)
                 layerInput = tf.concat([objPairs, question], 1)
                 for i in range(g_layers-1):
-                    layerInput = tf.layers.dense(layerInput, g_dim, activation=tf.nn.relu)
-                return tf.layers.dense(layerInput, g_dim)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim)
+                return tf.contrib.layers.fully_connected(layerInput, g_dim)
 
             def build_f(gSum, question):#gSum shape=(batch_size, g_dim)
                 layerInput = gSum
                 for i in range(f_layers-1):
-                    layerInput = tf.layers.dense(layerInput, f_dim, activation=tf.nn.relu)
-                return tf.layers.dense(layerInput, f_dim)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim)
+                return tf.contrib.layers.fully_connected(layerInput, f_dim)
 
             inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
             #questionShape = tf.shape(question)#[0] is batch_size, [1] is question_dim
@@ -244,26 +244,26 @@ class ModelBuilder:
             def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
                 for i in range(h_layers-1):
-                    layerInput = tf.layers.dense(layerInput, h_dim, activation=tf.nn.relu)
-                return tf.layers.dense(layerInput, h_dim)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, h_dim)
+                return tf.contrib.layers.fully_connected(layerInput, h_dim)
 
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count*obj_count, 2*h_dim)
                 layerInput = tf.concat([objPairs, question], 1)
                 for i in range(g_layers-1):
-                    layerInput = tf.layers.dense(layerInput, g_dim, activation=tf.nn.relu)
-                return tf.layers.dense(layerInput, g_dim)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim)
+                return tf.contrib.contrib.layers.fully_connected(layerInput, g_dim)
 
             def build_f_inner(gSum):#gSum2D shape=(batch_size*obj_count*obj_count, g_dim)
                 layerInput = gSum
                 for i in range(f_inner_layers-1):
-                    layerInput = tf.layers.dense(layerInput, f_inner_dim, activation=tf.nn.relu)
-                return tf.layers.dense(layerInput, f_inner_dim)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, f_inner_dim)
+                return tf.contrib.layers.fully_connected(layerInput, f_inner_dim)
 
             def build_f(gSum, question):#gSum shape=(batch_size, g_dim)
                 layerInput = gSum
                 for i in range(f_layers-1):
-                    layerInput = tf.layers.dense(layerInput, f_dim, activation=tf.nn.relu)
-                return tf.layers.dense(layerInput, f_dim)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim)
+                return tf.contrib.layers.fully_connected(layerInput, f_dim)
 
             inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
             #questionShape = tf.shape(question)#[0] is batch_size, [1] is question_dim
@@ -305,26 +305,26 @@ class ModelBuilder:
             def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
                 for i in range(h_layers-1):
-                    layerInput = tf.layers.dense(layerInput, h_dim, activation=tf.nn.relu)
-                return tf.layers.dense(layerInput, h_dim)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, h_dim)
+                return tf.contrib.layers.fully_connected(layerInput, h_dim)
 
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count*obj_count, 2*h_dim)
                 layerInput = tf.concat([objPairs, question], 1)
                 for i in range(g_layers-1):
-                    layerInput = tf.layers.dense(layerInput, g_dim, activation=tf.nn.relu)
-                return tf.layers.dense(layerInput, g_dim)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim)
+                return tf.contrib.layers.fully_connected(layerInput, g_dim)
 
             def build_f_inner(gSum):#gSum2D shape=(batch_size*obj_count, g_dim)
                 layerInput = gSum
                 for i in range(f_inner_layers-1):
-                    layerInput = tf.layers.dense(layerInput, f_inner_dim, activation=tf.nn.relu)
-                return tf.layers.dense(layerInput, f_inner_dim)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, f_inner_dim)
+                return tf.contrib.layers.fully_connected(layerInput, f_inner_dim)
 
             def build_f(gSum, question):#gSum shape=(batch_size, g_dim)
                 layerInput = gSum
                 for i in range(f_layers-1):
-                    layerInput = tf.layers.dense(layerInput, f_dim, activation=tf.nn.relu)
-                return tf.layers.dense(layerInput, f_dim)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim)
+                return tf.contrib.layers.fully_connected(layerInput, f_dim)
 
             inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
             #questionShape = tf.shape(question)#[0] is batch_size, [1] is question_dim
@@ -364,20 +364,20 @@ class ModelBuilder:
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
                 for i in range(g_layers-1):
-                    layerInput = tf.layers.dense(layerInput, g_dim, activation=tf.nn.relu)
-                return tf.layers.dense(layerInput, g_dim)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim)
+                return tf.contrib.layers.fully_connected(layerInput, g_dim)
 
             def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*g_dim)
                 layerInput = tf.concat([objPairs, question], 1)
                 for i in range(h_layers-1):
-                    layerInput = tf.layers.dense(layerInput, h_dim, activation=tf.nn.relu)
-                return tf.layers.dense(layerInput, h_dim)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, h_dim)
+                return tf.contrib.layers.fully_connected(layerInput, h_dim)
 
             def build_f(hSum, question):#gSum shape=(batch_size, g_dim)
                 layerInput = hSum
                 for i in range(f_layers-1):
-                    layerInput = tf.layers.dense(layerInput, f_dim, activation=tf.nn.relu)
-                return tf.layers.dense(layerInput, f_dim)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim)
+                return tf.contrib.layers.fully_connected(layerInput, f_dim)
 
             inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
             objPairs2D = getCombinations(objects)
@@ -412,20 +412,20 @@ class ModelBuilder:
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
                 for i in range(g_layers-1):
-                    layerInput = tf.layers.dense(layerInput, g_dim, activation=tf.nn.relu)
-                return tf.layers.dense(layerInput, g_dim)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim)
+                return tf.contrib.layers.fully_connected(layerInput, g_dim)
 
             def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*g_dim)
                 layerInput = tf.concat([objPairs, question], 1)
                 for i in range(h_layers-1):
-                    layerInput = tf.layers.dense(layerInput, h_dim, activation=tf.nn.relu)
-                return tf.layers.dense(layerInput, h_dim)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, h_dim)
+                return tf.contrib.layers.fully_connected(layerInput, h_dim)
 
             def build_f(hSum, question):#gSum shape=(batch_size, h_dim)
                 layerInput = hSum
                 for i in range(f_layers-1):
-                    layerInput = tf.layers.dense(layerInput, f_dim, activation=tf.nn.relu)
-                return tf.layers.dense(layerInput, f_dim)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim)
+                return tf.contrib.layers.fully_connected(layerInput, f_dim)
 
             inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
             objPairs2D = getCombinations(objects)
@@ -459,20 +459,20 @@ class ModelBuilder:
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
                 for i in range(g_layers-1):
-                    layerInput = tf.layers.dense(layerInput, g_dim, activation=tf.nn.relu)
-                return tf.layers.dense(layerInput, g_dim)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim)
+                return tf.contrib.layers.fully_connected(layerInput, g_dim)
 
             def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*g_dim)
                 layerInput = tf.concat([objPairs, question], 1)
                 for i in range(h_layers-1):
-                    layerInput = tf.layers.dense(layerInput, h_dim, activation=tf.nn.relu)
-                return tf.layers.dense(layerInput, h_dim)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, h_dim)
+                return tf.contrib.layers.fully_connected(layerInput, h_dim)
 
             def build_f(hSum, question):#gSum shape=(batch_size, h_dim)
                 layerInput = hSum
                 for i in range(f_layers-1):
-                    layerInput = tf.layers.dense(layerInput, f_dim, activation=tf.nn.relu)
-                return tf.layers.dense(layerInput, f_dim)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim)
+                return tf.contrib.layers.fully_connected(layerInput, f_dim)
 
             inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
             objPairs2D = getCombinations(objects)
@@ -513,20 +513,20 @@ class ModelBuilder:
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
                 for i in range(g_layers-1):
-                    layerInput = tf.layers.dense(layerInput, g_dim, activation=tf.nn.relu)
-                return tf.layers.dense(layerInput, g_dim)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim)
+                return tf.contrib.layers.fully_connected(layerInput, g_dim)
 
             def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*g_dim)
                 layerInput = tf.concat([objPairs, question], 1)
                 for i in range(h_layers-1):
-                    layerInput = tf.layers.dense(layerInput, h_dim, activation=tf.nn.relu)
-                return tf.layers.dense(layerInput, h_dim)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, h_dim)
+                return tf.contrib.layers.fully_connected(layerInput, h_dim)
 
             def build_f(hSum, question):#gSum shape=(batch_size, h_dim)
                 layerInput = hSum
                 for i in range(f_layers-1):
-                    layerInput = tf.layers.dense(layerInput, f_dim, activation=tf.nn.relu)
-                return tf.layers.dense(layerInput, f_dim)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim)
+                return tf.contrib.layers.fully_connected(layerInput, f_dim)
 
             inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
             objPairs2D = getCombinations(objects)
@@ -622,9 +622,9 @@ class ModelBuilder:
         with tf.name_scope('answerModel'):
             #tf.nn.softmax removed because it's applied afterwards by the built-in loss function softmax_cross_entropy_with_logits
             #no relu before softmax!
-            answer1 = tf.contrib.layers.fully_connected(prevNetworkOutput, self.dictSize)#, activation_fn=tf.nn.relu)#tf.nn.softmax)#shape=(batch_size, dictSize)
-            answer2 = tf.contrib.layers.fully_connected(prevNetworkOutput, self.dictSize)#, activation_fn=tf.nn.relu)#tf.nn.softmax)
-            answer3 = tf.contrib.layers.fully_connected(prevNetworkOutput, self.dictSize)#, activation_fn=tf.nn.relu)#tf.nn.softmax)
+            answer1 = tf.contrib.layers.fully_connected(prevNetworkOutput, self.dictSize, activation_fn=None)#, activation_fn=tf.nn.relu)#tf.nn.softmax)#shape=(batch_size, dictSize)
+            answer2 = tf.contrib.layers.fully_connected(prevNetworkOutput, self.dictSize, activation_fn=None)#, activation_fn=tf.nn.relu)#tf.nn.softmax)
+            answer3 = tf.contrib.layers.fully_connected(prevNetworkOutput, self.dictSize, activation_fn=None)#, activation_fn=tf.nn.relu)#tf.nn.softmax)
             #TODO: either make sure prevNetworkOutput doesnt end with a relu or put a relu-free layer before answerGates
             #answerGates = tf.contrib.layers.fully_connected(prevNetworkOutput, 3, activation_fn=tf.sigmoid)#shape=(batch_size, 3)
             answerStack = tf.stack([answer1, answer2, answer3], axis=1)#stack shape=(batch_size, 3, dictSize)
