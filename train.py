@@ -61,7 +61,7 @@ else:
     print("Using batch_size=1 for models with cubic complexity")
     batch_size = 1
 
-clr_stepsize = math.floor(4 * len(trainingData) / batch_size)#as per recommendation in the CLR paper (https://arxiv.org/pdf/1506.01186.pdf), 2-10 times the number of iterations in an epoch
+clr_stepsize = math.floor(2 * len(trainingData) / batch_size)#as per recommendation in the CLR paper (https://arxiv.org/pdf/1506.01186.pdf), 2-10 times the number of iterations in an epoch
 
 sess = tf.Session()
 
@@ -200,8 +200,8 @@ def train():
     for i, (contextInput, contextLengths, contextSentenceLengths, questionInput, questionLengths, answerInput) in islice(enumerate(getBatches(trainingData, epoch_count)), first_global_step, None):
         if args.clr:
             x = 1 - abs((i % (2*clr_stepsize)) / clr_stepsize - 1)#periodic triangle function, starting with 0
-            minLR = 0.00001
-            maxLR = 0.02
+            minLR = 0.00002
+            maxLR = 0.0001
             lr = minLR + (maxLR - minLR) * x
         else:
             lr = args.learningRate
