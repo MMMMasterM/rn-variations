@@ -61,29 +61,34 @@ def getTripleCombinations(inputTensor):#input shape=(batch_size, obj_count, obj_
 
 
 class ModelBuilder:
-    def __init__(self, batch_size, question_dim, obj_dim, dictSize):
+    def __init__(self, batch_size, question_dim, obj_dim, dictSize, questionAwareContext, f_layers, f_inner_layers, g_layers, h_layers):
         self.batch_size = batch_size
         self.question_dim = question_dim
         self.obj_dim = obj_dim
         self.dictSize = dictSize
+        self.questionAwareContext = questionAwareContext
+        self.f_layers = f_layers
+        self.f_inner_layers = f_inner_layers
+        self.g_layers = g_layers
+        self.h_layers = h_layers
 
     def buildRN_I(self, objects, question):#objects shape=(batch_size, obj_count, obj_dim), question shape=(batch_size, question_dim)
         with tf.name_scope('RN_I'):
             #model parameters
             g_dim = 256
-            g_layers = 3
+            # g_layers = 3
             f_dim = 256
-            f_layers = 3
+            # f_layers = 3
 
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                for i in range(g_layers-1):
+                for i in range(self.g_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim)
                 return tf.contrib.layers.fully_connected(layerInput, g_dim)
 
             def build_f(gSum, question):#gSum shape=(batch_size, g_dim)
                 layerInput = gSum
-                for i in range(f_layers-1):
+                for i in range(self.f_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim)
                 return tf.contrib.layers.fully_connected(layerInput, f_dim)
 
@@ -104,19 +109,19 @@ class ModelBuilder:
         with tf.name_scope('RN_II'):
             #model parameters
             g_dim = 256
-            g_layers = 3
+            # g_layers = 3
             f_dim = 256
-            f_layers = 3
+            # f_layers = 3
 
             def build_g(objTriples, question):#objPairs shape=(batch_size*obj_count*obj_count*obj_count, 3*obj_dim)
                 layerInput = tf.concat([objTriples, question], 1)
-                for i in range(g_layers-1):
+                for i in range(self.g_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim)
                 return tf.contrib.layers.fully_connected(layerInput, g_dim)
 
             def build_f(gSum, question):#gSum shape=(batch_size, g_dim)
                 layerInput = gSum
-                for i in range(f_layers-1):
+                for i in range(self.f_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim)
                 return tf.contrib.layers.fully_connected(layerInput, f_dim)
 
@@ -137,27 +142,27 @@ class ModelBuilder:
         with tf.name_scope('RN_III'):
             #model parameters
             h_dim = 256
-            h_layers = 3
+            # h_layers = 3
             g_dim = 256
-            g_layers = 3
+            # g_layers = 3
             f_dim = 256
-            f_layers = 3
+            # f_layers = 3
 
             def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                for i in range(h_layers-1):
+                for i in range(self.h_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, h_dim)
                 return tf.contrib.layers.fully_connected(layerInput, h_dim)
 
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count*obj_count, h_dim+obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                for i in range(g_layers-1):
+                for i in range(self.g_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim)
                 return tf.contrib.layers.fully_connected(layerInput, g_dim)
 
             def build_f(gSum, question):#gSum shape=(batch_size, g_dim)
                 layerInput = gSum
-                for i in range(f_layers-1):
+                for i in range(self.f_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim)
                 return tf.contrib.layers.fully_connected(layerInput, f_dim)
 
@@ -185,27 +190,27 @@ class ModelBuilder:
         with tf.name_scope('RN_IV'):
             #model parameters
             h_dim = 256
-            h_layers = 3
+            # h_layers = 3
             g_dim = 256
-            g_layers = 3
+            # g_layers = 3
             f_dim = 256
-            f_layers = 3
+            # f_layers = 3
 
             def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                for i in range(h_layers-1):
+                for i in range(self.h_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, h_dim)
                 return tf.contrib.layers.fully_connected(layerInput, h_dim)
 
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count*obj_count, 2*h_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                for i in range(g_layers-1):
+                for i in range(self.g_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim)
                 return tf.contrib.layers.fully_connected(layerInput, g_dim)
 
             def build_f(gSum, question):#gSum shape=(batch_size, g_dim)
                 layerInput = gSum
-                for i in range(f_layers-1):
+                for i in range(self.f_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim)
                 return tf.contrib.layers.fully_connected(layerInput, f_dim)
 
@@ -233,35 +238,35 @@ class ModelBuilder:
         with tf.name_scope('RN_V'):
             #model parameters
             h_dim = 256
-            h_layers = 3
+            # h_layers = 3
             g_dim = 256
-            g_layers = 3
+            # g_layers = 3
             f_inner_dim = 256
-            f_inner_layers = 3
+            # f_inner_layers = 3
             f_dim = 256
-            f_layers = 3
+            # f_layers = 3
 
             def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                for i in range(h_layers-1):
+                for i in range(self.h_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, h_dim)
                 return tf.contrib.layers.fully_connected(layerInput, h_dim)
 
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count*obj_count, 2*h_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                for i in range(g_layers-1):
+                for i in range(self.g_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim)
                 return tf.contrib.contrib.layers.fully_connected(layerInput, g_dim)
 
             def build_f_inner(gSum):#gSum2D shape=(batch_size*obj_count*obj_count, g_dim)
                 layerInput = gSum
-                for i in range(f_inner_layers-1):
+                for i in range(self.f_inner_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, f_inner_dim)
                 return tf.contrib.layers.fully_connected(layerInput, f_inner_dim)
 
             def build_f(gSum, question):#gSum shape=(batch_size, g_dim)
                 layerInput = gSum
-                for i in range(f_layers-1):
+                for i in range(self.f_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim)
                 return tf.contrib.layers.fully_connected(layerInput, f_dim)
 
@@ -294,35 +299,35 @@ class ModelBuilder:
         with tf.name_scope('RN_VI'):
             #model parameters
             h_dim = 256
-            h_layers = 3
+            # h_layers = 3
             g_dim = 256
-            g_layers = 3
+            # g_layers = 3
             f_inner_dim = 256
-            f_inner_layers = 3
+            # f_inner_layers = 3
             f_dim = 256
-            f_layers = 3
+            # f_layers = 3
 
             def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                for i in range(h_layers-1):
+                for i in range(self.h_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, h_dim)
                 return tf.contrib.layers.fully_connected(layerInput, h_dim)
 
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count*obj_count, 2*h_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                for i in range(g_layers-1):
+                for i in range(self.g_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim)
                 return tf.contrib.layers.fully_connected(layerInput, g_dim)
 
             def build_f_inner(gSum):#gSum2D shape=(batch_size*obj_count, g_dim)
                 layerInput = gSum
-                for i in range(f_inner_layers-1):
+                for i in range(self.f_inner_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, f_inner_dim)
                 return tf.contrib.layers.fully_connected(layerInput, f_inner_dim)
 
             def build_f(gSum, question):#gSum shape=(batch_size, g_dim)
                 layerInput = gSum
-                for i in range(f_layers-1):
+                for i in range(self.f_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim)
                 return tf.contrib.layers.fully_connected(layerInput, f_dim)
 
@@ -355,27 +360,27 @@ class ModelBuilder:
         with tf.name_scope('RN_VII_jl'):
             #model parameters
             h_dim = 256
-            h_layers = 3
+            # h_layers = 3
             g_dim = 256
-            g_layers = 3
+            # g_layers = 3
             f_dim = 256
-            f_layers = 3
+            # f_layers = 3
 
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                for i in range(g_layers-1):
+                for i in range(self.g_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim)
                 return tf.contrib.layers.fully_connected(layerInput, g_dim)
 
             def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*g_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                for i in range(h_layers-1):
+                for i in range(self.h_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, h_dim)
                 return tf.contrib.layers.fully_connected(layerInput, h_dim)
 
             def build_f(hSum, question):#gSum shape=(batch_size, g_dim)
                 layerInput = hSum
-                for i in range(f_layers-1):
+                for i in range(self.f_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim)
                 return tf.contrib.layers.fully_connected(layerInput, f_dim)
 
@@ -403,27 +408,27 @@ class ModelBuilder:
         with tf.name_scope('RN_VII_jk'):
             #model parameters
             h_dim = 256
-            h_layers = 3
+            # h_layers = 3
             g_dim = 256
-            g_layers = 3
+            # g_layers = 3
             f_dim = 256
-            f_layers = 3
+            # f_layers = 3
 
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                for i in range(g_layers-1):
+                for i in range(self.g_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim)
                 return tf.contrib.layers.fully_connected(layerInput, g_dim)
 
             def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*g_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                for i in range(h_layers-1):
+                for i in range(self.h_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, h_dim)
                 return tf.contrib.layers.fully_connected(layerInput, h_dim)
 
             def build_f(hSum, question):#gSum shape=(batch_size, h_dim)
                 layerInput = hSum
-                for i in range(f_layers-1):
+                for i in range(self.f_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim)
                 return tf.contrib.layers.fully_connected(layerInput, f_dim)
 
@@ -450,27 +455,27 @@ class ModelBuilder:
         with tf.name_scope('RN_VIII_jl'):
             #model parameters
             h_dim = 256
-            h_layers = 3
+            # h_layers = 3
             g_dim = 256
-            g_layers = 3
+            # g_layers = 3
             f_dim = 256
-            f_layers = 3
+            # f_layers = 3
 
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                for i in range(g_layers-1):
+                for i in range(self.g_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim)
                 return tf.contrib.layers.fully_connected(layerInput, g_dim)
 
             def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*g_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                for i in range(h_layers-1):
+                for i in range(self.h_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, h_dim)
                 return tf.contrib.layers.fully_connected(layerInput, h_dim)
 
             def build_f(hSum, question):#gSum shape=(batch_size, h_dim)
                 layerInput = hSum
-                for i in range(f_layers-1):
+                for i in range(self.f_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim)
                 return tf.contrib.layers.fully_connected(layerInput, f_dim)
 
@@ -504,27 +509,27 @@ class ModelBuilder:
         with tf.name_scope('RN_VIII_jk'):
             #model parameters
             h_dim = 256
-            h_layers = 3
+            # h_layers = 3
             g_dim = 256
-            g_layers = 3
+            # g_layers = 3
             f_dim = 256
-            f_layers = 3
+            # f_layers = 3
 
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                for i in range(g_layers-1):
+                for i in range(self.g_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim)
                 return tf.contrib.layers.fully_connected(layerInput, g_dim)
 
             def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*g_dim)
                 layerInput = tf.concat([objPairs, question], 1)
-                for i in range(h_layers-1):
+                for i in range(self.h_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, h_dim)
                 return tf.contrib.layers.fully_connected(layerInput, h_dim)
 
             def build_f(hSum, question):#gSum shape=(batch_size, h_dim)
                 layerInput = hSum
-                for i in range(f_layers-1):
+                for i in range(self.f_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim)
                 return tf.contrib.layers.fully_connected(layerInput, f_dim)
 
@@ -587,14 +592,16 @@ class ModelBuilder:
             embeddedSentences = tf.nn.embedding_lookup(wordEmbedding, inputSentences)#shape=(batch_size*contextMaxLength, seq_len, embeddingDimension)
             #do we want to broadcast the question to the sentence LSTM here? or rather leave it entirely to the relation network
             #START VARIANTS
-            # a) variant WITH broadcasting the questionLSTMoutputs to all sentences and timesteps (words/tokens):
-            broadcastedQuestionLSTMoutputs = tf.expand_dims(questionLSTMoutputs, axis=1)#add time axis
-            broadcastedQuestionLSTMoutputs = tf.tile(broadcastedQuestionLSTMoutputs, [inputContextMaxLength, inputContextSentenceMaxLength, 1])#repeat along time axis
-            sentenceLSTMcell = tf.nn.rnn_cell.LSTMCell(num_units=sLstmHiddenUnits)
-            sentenceLSTMoutputs, _ = tf.nn.dynamic_rnn(sentenceLSTMcell, tf.concat([embeddedSentences, broadcastedQuestionLSTMoutputs], axis=2), dtype=tf.float32, scope="sentenceLSTM")#shape=(batch_size*contextMaxLength, seq_len, sLstmHiddenUnits)
-            # b) variant WITHOUT broadcasting the questionLSTMoutputs to all sentences and timesteps (words/tokens):
-            # sentenceLSTMcell = tf.nn.rnn_cell.LSTMCell(num_units=sLstmHiddenUnits)
-            # sentenceLSTMoutputs, _ = tf.nn.dynamic_rnn(sentenceLSTMcell, embeddedSentences, dtype=tf.float32, scope="sentenceLSTM")#shape=(batch_size*contextMaxLength, seq_len, sLstmHiddenUnits)
+            if self.questionAwareContext:
+                # a) variant WITH broadcasting the questionLSTMoutputs to all sentences and timesteps (words/tokens):
+                broadcastedQuestionLSTMoutputs = tf.expand_dims(questionLSTMoutputs, axis=1)#add time axis
+                broadcastedQuestionLSTMoutputs = tf.tile(broadcastedQuestionLSTMoutputs, [inputContextMaxLength, inputContextSentenceMaxLength, 1])#repeat along time axis
+                sentenceLSTMcell = tf.nn.rnn_cell.LSTMCell(num_units=sLstmHiddenUnits)
+                sentenceLSTMoutputs, _ = tf.nn.dynamic_rnn(sentenceLSTMcell, tf.concat([embeddedSentences, broadcastedQuestionLSTMoutputs], axis=2), dtype=tf.float32, scope="sentenceLSTM")#shape=(batch_size*contextMaxLength, seq_len, sLstmHiddenUnits)
+            else:
+                # b) variant WITHOUT broadcasting the questionLSTMoutputs to all sentences and timesteps (words/tokens):
+                sentenceLSTMcell = tf.nn.rnn_cell.LSTMCell(num_units=sLstmHiddenUnits)
+                sentenceLSTMoutputs, _ = tf.nn.dynamic_rnn(sentenceLSTMcell, embeddedSentences, dtype=tf.float32, scope="sentenceLSTM")#shape=(batch_size*contextMaxLength, seq_len, sLstmHiddenUnits)
             #END VARIANTS
             #extract final states at the end of each sentence's sequence
             sentenceLSTMoutputs = tf.reshape(sentenceLSTMoutputs, shape=(-1, sLstmHiddenUnits))

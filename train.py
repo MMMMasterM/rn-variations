@@ -34,6 +34,11 @@ parser.add_argument('--layers', type=int, default=0)
 parser.add_argument('--optimizer', default='adam')
 parser.add_argument('--clr', action='store_true')#Cyclical learning rate
 parser.add_argument('--learningRate', type=float, default=1e-5)
+parser.add_argument('--questionAwareContext', action='store_true')
+parser.add_argument('--f_layers', type=int, default=3)
+parser.add_argument('--f_inner_layers', type=int, default=3)
+parser.add_argument('--g_layers', type=int, default=3)
+parser.add_argument('--h_layers', type=int, default=3)
 args = parser.parse_args()
 
 #parse which RN to use
@@ -47,7 +52,7 @@ if args.optimizer != 'adam' and args.optimizer != 'nesterov':
     print('Optimizer must be one of [adam, nesterov]')
     exit()
 
-logDir = os.path.join('log', str(modelToUse) + '_' + str(layerCount) + '_' + args.optimizer + '_' + str(args.clr) + '_' + str(args.learningRate))
+logDir = os.path.join('log', str(modelToUse) + '_' + str(layerCount) + '_' + args.optimizer + '_' + str(args.clr) + '_' + str(args.learningRate) + '_' + str(args.questionAwareContext) + '_' + str(args.h_layers) + '_' + str(args.g_layers) + '_' + str(args.f_inner_layers) + '_' + str(args.f_layers))
 try:
     os.stat(logDir)
 except:
@@ -101,7 +106,7 @@ def getBatches(dataset, epochs):#generate batches of data
         yield contextInput, contextLengths, contextSentenceLengths, questionInput, questionLengths, answerInput
 
 #build the whole model and run it
-modelBuilder = ModelBuilder(batch_size, question_dim, obj_dim, dictSize)
+modelBuilder = ModelBuilder(batch_size, question_dim, obj_dim, dictSize, args.questionAwareContext)
 
 (inputContext, inputContextLengths, inputContextSentenceLengths, inputQuestion, inputQuestionLengths, objects, question) = modelBuilder.buildWordProcessorLSTMs()
 
@@ -136,7 +141,7 @@ else:
 #(answer, answerGates, answerForCorrectness) = modelBuilder.buildAnswerModel(rnOutput)
 (answer, answerForCorrectness) = modelBuilder.buildAnswerModel(rnOutput)
 
-(inputAnswer, loss, optimizer_op, global_step_tensor, gradientsNorm, learningRate) = modelBuilder.buildOptimizer(answer, args.optimizer)#, answerGates)
+(inputAnswer, loss, optimizer_op, global_step_tensor, gradientsNorm, learningRate) = modelBuilder.buildOptimizer(answer, args.optimizer, args.f_layers, args.f_inner_layers, args.g_layers, args.h_layers)#, answerGates)
 
 with tf.name_scope('validation'):
     #correct = tf.reduce_min(tf.cast(tf.equal(inputAnswer, tf.round(answer)), dtype=tf.float32), axis=1)#bad results since the max entries often don't achieve 0.5 so rounding doesnt work
