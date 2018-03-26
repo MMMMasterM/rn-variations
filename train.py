@@ -25,9 +25,6 @@ enabledWeightSaveRestore = False
 batch_size = 1#32
 epoch_count = 40#only two epochs to determine good min/max 
 
-question_dim = 256
-obj_dim = 256
-
 parser = argparse.ArgumentParser()
 parser.add_argument('modelToUse', metavar='modelToUse', type=int, nargs='?', default=1)
 parser.add_argument('--layers', type=int, default=0)
@@ -39,7 +36,13 @@ parser.add_argument('--f_layers', type=int, default=3)
 parser.add_argument('--f_inner_layers', type=int, default=3)
 parser.add_argument('--g_layers', type=int, default=3)
 parser.add_argument('--h_layers', type=int, default=3)
+parser.add_argument('--appendPosVec', action='store_true')
+parser.add_argument('--obj_dim', type=int, default=256)
+parser.add_argument('--question_dim', type=int, default=256)
 args = parser.parse_args()
+
+question_dim = args.question_dim
+obj_dim = args.obj_dim
 
 #parse which RN to use
 modelToUse = args.modelToUse
@@ -52,7 +55,7 @@ if args.optimizer != 'adam' and args.optimizer != 'nesterov':
     print('Optimizer must be one of [adam, nesterov]')
     exit()
 
-logDir = os.path.join('log', str(modelToUse) + '_' + str(layerCount) + '_' + args.optimizer + '_' + str(args.clr) + '_' + str(args.learningRate) + '_' + str(args.questionAwareContext) + '_' + str(args.h_layers) + '_' + str(args.g_layers) + '_' + str(args.f_inner_layers) + '_' + str(args.f_layers))
+logDir = os.path.join('log', str(modelToUse) + '_' + str(layerCount) + '_' + args.optimizer + '_' + str(args.clr) + '_' + str(args.learningRate) + '_' + str(args.questionAwareContext) + '_' + str(args.h_layers) + '_' + str(args.g_layers) + '_' + str(args.f_inner_layers) + '_' + str(args.f_layers) + '_' + str(args.appendPosVec) + '_' + str(args.obj_dim) + '_' + str(args.question_dim))
 try:
     os.stat(logDir)
 except:
@@ -106,7 +109,7 @@ def getBatches(dataset, epochs):#generate batches of data
         yield contextInput, contextLengths, contextSentenceLengths, questionInput, questionLengths, answerInput
 
 #build the whole model and run it
-modelBuilder = ModelBuilder(batch_size, question_dim, obj_dim, dictSize, args.questionAwareContext)
+modelBuilder = ModelBuilder(batch_size, question_dim, obj_dim, dictSize, args.questionAwareContext, args.f_layers, args.f_inner_layers, args.g_layers, args.h_layers, args.appendPosVec)
 
 (inputContext, inputContextLengths, inputContextSentenceLengths, inputQuestion, inputQuestionLengths, objects, question) = modelBuilder.buildWordProcessorLSTMs()
 
@@ -141,7 +144,7 @@ else:
 #(answer, answerGates, answerForCorrectness) = modelBuilder.buildAnswerModel(rnOutput)
 (answer, answerForCorrectness) = modelBuilder.buildAnswerModel(rnOutput)
 
-(inputAnswer, loss, optimizer_op, global_step_tensor, gradientsNorm, learningRate) = modelBuilder.buildOptimizer(answer, args.optimizer, args.f_layers, args.f_inner_layers, args.g_layers, args.h_layers)#, answerGates)
+(inputAnswer, loss, optimizer_op, global_step_tensor, gradientsNorm, learningRate) = modelBuilder.buildOptimizer(answer, args.optimizer)#, answerGates)
 
 with tf.name_scope('validation'):
     #correct = tf.reduce_min(tf.cast(tf.equal(inputAnswer, tf.round(answer)), dtype=tf.float32), axis=1)#bad results since the max entries often don't achieve 0.5 so rounding doesnt work

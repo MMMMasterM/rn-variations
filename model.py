@@ -61,7 +61,7 @@ def getTripleCombinations(inputTensor):#input shape=(batch_size, obj_count, obj_
 
 
 class ModelBuilder:
-    def __init__(self, batch_size, question_dim, obj_dim, dictSize, questionAwareContext, f_layers, f_inner_layers, g_layers, h_layers):
+    def __init__(self, batch_size, question_dim, obj_dim, dictSize, questionAwareContext, f_layers, f_inner_layers, g_layers, h_layers, appendPosVec):
         self.batch_size = batch_size
         self.question_dim = question_dim
         self.obj_dim = obj_dim
@@ -71,6 +71,7 @@ class ModelBuilder:
         self.f_inner_layers = f_inner_layers
         self.g_layers = g_layers
         self.h_layers = h_layers
+        self.appendPosVec = appendPosVec
 
     def buildRN_I(self, objects, question):#objects shape=(batch_size, obj_count, obj_dim), question shape=(batch_size, question_dim)
         with tf.name_scope('RN_I'):
@@ -458,7 +459,7 @@ class ModelBuilder:
             # h_layers = 3
             g_dim = 256
             # g_layers = 3
-            f_dim = 256
+            f_dim = 512
             # f_layers = 3
 
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
@@ -512,7 +513,7 @@ class ModelBuilder:
             # h_layers = 3
             g_dim = 256
             # g_layers = 3
-            f_dim = 256
+            f_dim = 512
             # f_layers = 3
 
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
@@ -562,9 +563,14 @@ class ModelBuilder:
     def buildWordProcessorLSTMs(self):
         with tf.name_scope('wordProcessorLSTMs'):
             #model parameters
-            embeddingDimension = 128
+            embeddingDimension = 256#128
             qLstmHiddenUnits = self.question_dim
-            sLstmHiddenUnits = self.obj_dim
+            if self.appendPosVec:
+                posVecDim = 32
+                sLstmHiddenUnits = self.obj_dim - posVecDim
+            else:
+                posVecDim = self.obj_dim
+                sLstmHiddenUnits = self.obj_dim
 
             inputContext = tf.placeholder(tf.int32, shape=(self.batch_size, None, None))
             inputContextLengths = tf.placeholder(tf.int32, shape=(self.batch_size,))#Number of sentences in each context
@@ -612,13 +618,16 @@ class ModelBuilder:
 
             #tag sentences with position encodings to give information about their order of occurrance in the context (position encoding: https://arxiv.org/pdf/1503.08895.pdf)
             tagMatrixJ = tf.range(1, tf.cast(inputContextMaxLength + 1, tf.float32), dtype=tf.float32) / tf.cast(inputContextMaxLength, tf.float32)
-            tagMatrixK = tf.range(1, sLstmHiddenUnits + 1, dtype=tf.float32) / sLstmHiddenUnits
-            tagMatrixTerm1 = 1 - tf.tile(tf.expand_dims(tagMatrixJ, axis=1), [1, sLstmHiddenUnits])#shape=(inputContextMaxLength, sLstmHiddenUnits)
-            tagMatrixTerm2 = tf.tile(tf.expand_dims(tagMatrixK, axis=0), [inputContextMaxLength, 1])#shape=(inputContextMaxLength, sLstmHiddenUnits)
+            tagMatrixK = tf.range(1, posVecDim + 1, dtype=tf.float32) / posVecDim
+            tagMatrixTerm1 = 1 - tf.tile(tf.expand_dims(tagMatrixJ, axis=1), [1, posVecDim])#shape=(inputContextMaxLength, posVecDim)
+            tagMatrixTerm2 = tf.tile(tf.expand_dims(tagMatrixK, axis=0), [inputContextMaxLength, 1])#shape=(inputContextMaxLength, posVecDim)
             tagMatrixTerm3 = tagMatrixTerm1 * 2 - 1
-            tagMatrix = tagMatrixTerm1 - tagMatrixTerm2 * tagMatrixTerm3#shape=(inputContextMaxLength, sLstmHiddenUnits)
-            tagMatrix = tf.tile(tf.expand_dims(tagMatrix, axis=0), [self.batch_size, 1, 1])#shape=(batch_size, inputContextMaxLength, sLstmHiddenUnits)
-            sentenceLSTMoutputs = sentenceLSTMoutputs * tagMatrix
+            tagMatrix = tagMatrixTerm1 - tagMatrixTerm2 * tagMatrixTerm3#shape=(inputContextMaxLength, posVecDim)
+            tagMatrix = tf.tile(tf.expand_dims(tagMatrix, axis=0), [self.batch_size, 1, 1])#shape=(batch_size, inputContextMaxLength, posVecDim)
+            if self.appendPosVec:
+                sentenceLSTMoutputs = tf.concat([sentenceLSTMoutputs, tagMatrix], axis=2)
+            else:
+                sentenceLSTMoutputs = sentenceLSTMoutputs * tagMatrix
 
             #TODO: optimization: dont apply the LSTMs to the padding-sentences (empty sentences added to make all contexts in a batch the same sentence-count)
 
@@ -629,14 +638,15 @@ class ModelBuilder:
         with tf.name_scope('answerModel'):
             #tf.nn.softmax removed because it's applied afterwards by the built-in loss function softmax_cross_entropy_with_logits
             #no relu before softmax!
-            answer1 = tf.contrib.layers.fully_connected(prevNetworkOutput, self.dictSize, activation_fn=None)#, activation_fn=tf.nn.relu)#tf.nn.softmax)#shape=(batch_size, dictSize)
-            answer2 = tf.contrib.layers.fully_connected(prevNetworkOutput, self.dictSize, activation_fn=None)#, activation_fn=tf.nn.relu)#tf.nn.softmax)
-            answer3 = tf.contrib.layers.fully_connected(prevNetworkOutput, self.dictSize, activation_fn=None)#, activation_fn=tf.nn.relu)#tf.nn.softmax)
-            #TODO: either make sure prevNetworkOutput doesnt end with a relu or put a relu-free layer before answerGates
-            #answerGates = tf.contrib.layers.fully_connected(prevNetworkOutput, 3, activation_fn=tf.sigmoid)#shape=(batch_size, 3)
-            answerStack = tf.stack([answer1, answer2, answer3], axis=1)#stack shape=(batch_size, 3, dictSize)
-            #answer = tf.reduce_sum(tf.multiply(answerStack, tf.expand_dims(answerGates, axis=2)), axis=1)
-            answer = tf.reduce_mean(answerStack, axis=1)
+            # answer1 = tf.contrib.layers.fully_connected(prevNetworkOutput, self.dictSize, activation_fn=None)#, activation_fn=tf.nn.relu)#tf.nn.softmax)#shape=(batch_size, dictSize)
+            # answer2 = tf.contrib.layers.fully_connected(prevNetworkOutput, self.dictSize, activation_fn=None)#, activation_fn=tf.nn.relu)#tf.nn.softmax)
+            # answer3 = tf.contrib.layers.fully_connected(prevNetworkOutput, self.dictSize, activation_fn=None)#, activation_fn=tf.nn.relu)#tf.nn.softmax)
+            # #TODO: either make sure prevNetworkOutput doesnt end with a relu or put a relu-free layer before answerGates
+            # #answerGates = tf.contrib.layers.fully_connected(prevNetworkOutput, 3, activation_fn=tf.sigmoid)#shape=(batch_size, 3)
+            # answerStack = tf.stack([answer1, answer2, answer3], axis=1)#stack shape=(batch_size, 3, dictSize)
+            # #answer = tf.reduce_sum(tf.multiply(answerStack, tf.expand_dims(answerGates, axis=2)), axis=1)
+            # answer = tf.reduce_mean(answerStack, axis=1)
+            answer = tf.contrib.layers.fully_connected(prevNetworkOutput, self.dictSize, activation_fn=None)
 
             # maxIndices = tf.argmax(answerStack, axis=2)#shape=(batch_size, 3) #equivalent to tf.argmax(answerSoftmaxStack, ...) because of softmax' monotonicity
             # answersOneHot = tf.one_hot(maxIndices, self.dictSize)#shape=(batch_size, 3, dictSize)
