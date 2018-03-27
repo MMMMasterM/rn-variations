@@ -19,12 +19,17 @@ print("gpuList: " + str(gpuList))
 
 #array of parameter lists to hand to train.py
 runList = [
-    [8, '--layers', 1, '--learningRate', 0.00005, '--g_layers', 4, '--f_layers', 2],
-    [8, '--layers', 1, '--learningRate', 0.00005, '--g_layers', 4, '--f_layers', 2, '--clr'],
-    [8, '--layers', 0, '--learningRate', 0.00005, '--g_layers', 4, '--f_layers', 2],
-    [8, '--layers', 0, '--learningRate', 0.00005, '--g_layers', 4, '--f_layers', 2, '--clr'],
     [8, '--layers', 1, '--learningRate', 0.00005, '--g_layers', 4, '--f_layers', 2, '--appendPosVec'],
-    [8, '--layers', 1, '--learningRate', 0.00005, '--g_layers', 4, '--f_layers', 2, '--obj_dim', 128],
+    [8, '--layers', 1, '--learningRate', 0.000075, '--g_layers', 4, '--f_layers', 2, '--appendPosVec'],
+    [8, '--layers', 1, '--learningRate', 0.00005, '--g_layers', 4, '--f_layers', 2, '--appendPosVec', '--obj_dim', 512],
+    [8, '--layers', 1, '--learningRate', 0.00005, '--g_layers', 4, '--f_layers', 2, '--appendPosVec', '--obj_dim', 32, '--question_dim', 32],
+
+    # [8, '--layers', 1, '--learningRate', 0.00005, '--g_layers', 4, '--f_layers', 2],
+    # [8, '--layers', 1, '--learningRate', 0.00005, '--g_layers', 4, '--f_layers', 2, '--clr'],
+    # [8, '--layers', 0, '--learningRate', 0.00005, '--g_layers', 4, '--f_layers', 2],
+    # [8, '--layers', 0, '--learningRate', 0.00005, '--g_layers', 4, '--f_layers', 2, '--clr'],
+    # [8, '--layers', 1, '--learningRate', 0.00005, '--g_layers', 4, '--f_layers', 2, '--appendPosVec'],
+    # [8, '--layers', 1, '--learningRate', 0.00005, '--g_layers', 4, '--f_layers', 2, '--obj_dim', 128],
 
     # [8, '--layers', 0, '--learningRate', 0.00005, '--questionAwareContext'],
     # [8, '--layers', 0, '--learningRate', 0.00005],

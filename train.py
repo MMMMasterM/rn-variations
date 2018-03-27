@@ -19,7 +19,7 @@ with open(os.path.join('processeddata', 'train.txt'), 'rb') as f:
 with open(os.path.join('processeddata', 'valid.txt'), 'rb') as f:
     validationData = pickle.load(f)
 
-enabledWeightSaveRestore = False
+enabledWeightSaveRestore = True
 
 #training parameters
 batch_size = 1#32
@@ -55,7 +55,8 @@ if args.optimizer != 'adam' and args.optimizer != 'nesterov':
     print('Optimizer must be one of [adam, nesterov]')
     exit()
 
-logDir = os.path.join('log', str(modelToUse) + '_' + str(layerCount) + '_' + args.optimizer + '_' + str(args.clr) + '_' + str(args.learningRate) + '_' + str(args.questionAwareContext) + '_' + str(args.h_layers) + '_' + str(args.g_layers) + '_' + str(args.f_inner_layers) + '_' + str(args.f_layers) + '_' + str(args.appendPosVec) + '_' + str(args.obj_dim) + '_' + str(args.question_dim))
+paramString = str(modelToUse) + '_' + str(layerCount) + '_' + args.optimizer + '_' + str(args.clr) + '_' + str(args.learningRate) + '_' + str(args.questionAwareContext) + '_' + str(args.h_layers) + '_' + str(args.g_layers) + '_' + str(args.f_inner_layers) + '_' + str(args.f_layers) + '_' + str(args.appendPosVec) + '_' + str(args.obj_dim) + '_' + str(args.question_dim)
+logDir = os.path.join('log', paramString)
 try:
     os.stat(logDir)
 except:
@@ -64,7 +65,7 @@ except:
 #determine appropriate batch size for chosen model
 if modelToUse == 1 or modelToUse == 7 or modelToUse == 8:
     print("Using batch_size=8 for models with quadratic complexity")
-    batch_size = 8
+    batch_size = 4
 else:
     print("Using batch_size=1 for models with cubic complexity")
     batch_size = 1
@@ -241,7 +242,7 @@ if enabledWeightSaveRestore:
         os.stat('weights')
     except:
         os.mkdir('weights')
-    weightsDir = os.path.join('weights', '_'.join(sys.argv[1:]))
+    weightsDir = os.path.join('weights', paramString)
     try:
         os.stat(weightsDir)
     except:
