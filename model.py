@@ -61,8 +61,9 @@ def getTripleCombinations(inputTensor):#input shape=(batch_size, obj_count, obj_
 
 
 class ModelBuilder:
-    def __init__(self, batch_size, question_dim, obj_dim, dictSize, questionAwareContext, f_layers, f_inner_layers, g_layers, h_layers, appendPosVec):
+    def __init__(self, batch_size, macro_batch_size, question_dim, obj_dim, dictSize, questionAwareContext, f_layers, f_inner_layers, g_layers, h_layers, appendPosVec):
         self.batch_size = batch_size
+        self.macro_batch_size = macro_batch_size
         self.question_dim = question_dim
         self.obj_dim = obj_dim
         self.dictSize = dictSize
@@ -687,11 +688,19 @@ class ModelBuilder:
                 optimizer = tf.train.AdamOptimizer(learningRate)
                 print('Using adam')
             #optimizer = tf.train.AdamOptimizer(1e-5)
+            tvs = tf.trainable_variables()
+            accum_vars = [tf.Variable(tf.zeros_like(tv.initialized_value()), trainable=False) for tv in tvs]
+            zero_ops = [tv.assign(tf.zeros_like(tv)) for tv in accum_vars]
             #gradient clipping
-            gradients, variables = zip(*optimizer.compute_gradients(loss))
+            gradients, variables = zip(*optimizer.compute_gradients(loss, tvs))
             gradientsNorm = tf.global_norm(gradients)#for logging purposes - keep this line before clipping
             gradients, _ = tf.clip_by_global_norm(gradients, 250.0)#threshold selected as average norm * 5
-            optimizer_op = optimizer.apply_gradients(zip(gradients, variables), global_step=global_step_tensor)
+            #gradient accumulation
+            accum_ops = [accum_vars[i].assign_add(gv) for i, gv in enumerate(gradients)]
+            train_step = optimizer.apply_gradients([(accum_vars[i], tv) for i, tv in enumerate(variables)])
+            #TODO: average gradient over macro_batches?
+            #optimizer_op = optimizer.apply_gradients(zip(gradients, variables), global_step=global_step_tensor)
             #optimizer_op = tf.train.AdamOptimizer(1e-5).minimize(loss)#without gradient clipping
 
-        return inputAnswer, loss, optimizer_op, global_step_tensor, gradientsNorm, learningRate
+        #return inputAnswer, loss, optimizer_op, global_step_tensor, gradientsNorm, learningRate
+        return inputAnswer, loss, accum_ops, zero_ops, train_step, global_step_tensor, gradientsNorm, learningRate

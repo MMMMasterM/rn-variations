@@ -39,7 +39,10 @@ parser.add_argument('--h_layers', type=int, default=3)
 parser.add_argument('--appendPosVec', action='store_true')
 parser.add_argument('--obj_dim', type=int, default=256)
 parser.add_argument('--question_dim', type=int, default=256)
+parser.add_argument('--batch_size', type=int, default=32)#number of samples per training step - combines ceil(args.batch_size / batch_size) many batches into macro-batches containing ceil(args.batch_size / batch_size) * batch_size many samples in total
 args = parser.parse_args()
+
+macro_batch_size = args.batch_size#effective batch size - accumulates multiple batches' gradients and then performs a training step
 
 question_dim = args.question_dim
 obj_dim = args.obj_dim
@@ -65,7 +68,7 @@ except:
 #determine appropriate batch size for chosen model
 if modelToUse == 1 or modelToUse == 7 or modelToUse == 8:
     print("Using batch_size=8 for models with quadratic complexity")
-    batch_size = 4
+    batch_size = 8
 else:
     print("Using batch_size=1 for models with cubic complexity")
     batch_size = 1
@@ -110,7 +113,7 @@ def getBatches(dataset, epochs):#generate batches of data
         yield contextInput, contextLengths, contextSentenceLengths, questionInput, questionLengths, answerInput
 
 #build the whole model and run it
-modelBuilder = ModelBuilder(batch_size, question_dim, obj_dim, dictSize, args.questionAwareContext, args.f_layers, args.f_inner_layers, args.g_layers, args.h_layers, args.appendPosVec)
+modelBuilder = ModelBuilder(batch_size, macro_batch_size, question_dim, obj_dim, dictSize, args.questionAwareContext, args.f_layers, args.f_inner_layers, args.g_layers, args.h_layers, args.appendPosVec)
 
 (inputContext, inputContextLengths, inputContextSentenceLengths, inputQuestion, inputQuestionLengths, objects, question) = modelBuilder.buildWordProcessorLSTMs()
 
@@ -145,7 +148,8 @@ else:
 #(answer, answerGates, answerForCorrectness) = modelBuilder.buildAnswerModel(rnOutput)
 (answer, answerForCorrectness) = modelBuilder.buildAnswerModel(rnOutput)
 
-(inputAnswer, loss, optimizer_op, global_step_tensor, gradientsNorm, learningRate) = modelBuilder.buildOptimizer(answer, args.optimizer)#, answerGates)
+#(inputAnswer, loss, optimizer_op, global_step_tensor, gradientsNorm, learningRate) = modelBuilder.buildOptimizer(answer, args.optimizer)#, answerGates)
+(inputAnswer, loss, accum_ops, zero_ops, train_step, global_step_tensor, gradientsNorm, learningRate) = modelBuilder.buildOptimizer(answer, args.optimizer)#, answerGates)
 
 with tf.name_scope('validation'):
     #correct = tf.reduce_min(tf.cast(tf.equal(inputAnswer, tf.round(answer)), dtype=tf.float32), axis=1)#bad results since the max entries often don't achieve 0.5 so rounding doesnt work
@@ -201,12 +205,16 @@ def runValidation():
     writer.add_summary(summary, global_step=global_step)
     print("total accuracy " + str(total_acc_val))
 
+batches_per_macro_batch = math.ceil(macro_batch_size / batch_size)
+
 def train():
     acc = []
     first_global_step = int(sess.run(global_step_tensor))#continue from restored global_step
     if first_global_step > 0:
         print('Skipping forward to global_step ' + str(first_global_step))
     for i, (contextInput, contextLengths, contextSentenceLengths, questionInput, questionLengths, answerInput) in islice(enumerate(getBatches(trainingData, epoch_count)), first_global_step, None):
+        if i % batches_per_macro_batch == 0:
+            sess.run(zero_ops)
         if args.clr:
             x = 1 - abs((i % (2*clr_stepsize)) / clr_stepsize - 1)#periodic triangle function, starting with 0
             minLR = 0.00002
@@ -214,12 +222,14 @@ def train():
             lr = minLR + (maxLR - minLR) * x
         else:
             lr = args.learningRate
-        feed_dict={inputContext: contextInput, inputContextLengths: contextLengths, inputContextSentenceLengths: contextSentenceLengths, inputQuestion: questionInput, inputQuestionLengths: questionLengths, inputAnswer: answerInput, learningRate: lr}
+        feed_dict={inputContext: contextInput, inputContextLengths: contextLengths, inputContextSentenceLengths: contextSentenceLengths, inputQuestion: questionInput, inputQuestionLengths: questionLengths, inputAnswer: answerInput}
         #print(sess.run(tf.shape(objects), feed_dict=feed_dict))#debug
-        sess.run(optimizer_op, feed_dict=feed_dict)
+        sess.run(accum_ops, feed_dict=feed_dict)
         summary, lossVal, batchAcc = sess.run([training_summary, loss, accuracy], feed_dict=feed_dict)
         acc.append(batchAcc)
         writer.add_summary(summary, global_step=i)
+        if i % batches_per_macro_batch == batches_per_macro_batch-1:
+            sess.run(train_step, feed_dict={learningRate: lr})
         if (i % 50 == 0):
             print("batch " + str(i))
             print("loss " + str(lossVal))
