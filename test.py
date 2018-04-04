@@ -1,12 +1,15 @@
 import tensorflow as tf
 import numpy as np
 import os, pickle, sys
+import argparse
 from model import ModelBuilder
 
 #load dictionary
 with open(os.path.join('processeddata', 'dictionary.txt'), 'rb') as f:
     wordIndices = pickle.load(f)
 dictSize = len(wordIndices) + 1#padding entry with index 0 is not listed in wordIndices
+wordDict = {v: k for k, v in wordIndices.items()}
+wordDict[0] = '[blank]'
 
 #load data
 with open(os.path.join('processeddata', 'train.txt'), 'rb') as f:
@@ -16,16 +19,34 @@ with open(os.path.join('processeddata', 'test.txt'), 'rb') as f:
     testingData = pickle.load(f)
 
 batch_size = 1
-question_dim = 256
-obj_dim = 256
+
+parser = argparse.ArgumentParser()
+parser.add_argument('modelToUse', metavar='modelToUse', type=int, nargs='?', default=1)
+parser.add_argument('--layers', type=int, default=0)
+parser.add_argument('--optimizer', default='adam')
+parser.add_argument('--clr', action='store_true')#Cyclical learning rate
+parser.add_argument('--learningRate', type=float, default=1e-5)
+parser.add_argument('--questionAwareContext', action='store_true')
+parser.add_argument('--f_layers', type=int, default=3)
+parser.add_argument('--f_inner_layers', type=int, default=3)
+parser.add_argument('--g_layers', type=int, default=3)
+parser.add_argument('--h_layers', type=int, default=3)
+parser.add_argument('--appendPosVec', action='store_true')
+parser.add_argument('--obj_dim', type=int, default=256)
+parser.add_argument('--question_dim', type=int, default=256)
+parser.add_argument('--batch_size', type=int, default=32)#required to select the weights that were trained with the parameter value
+args = parser.parse_args()
+
+question_dim = args.question_dim
+obj_dim = args.obj_dim
 
 #parse which RN to use
-modelToUse = 1
-layerCount = 0#only relevant for RN VIII
-if len(sys.argv) >= 2:
-    modelToUse = int(sys.argv[1])
-    if len(sys.argv) >= 3:
-        layerCount = int(sys.argv[2])
+modelToUse = args.modelToUse
+layerCount = args.layers
+
+macro_batch_size = args.batch_size
+
+paramString = str(modelToUse) + '_' + str(layerCount) + '_' + args.optimizer + '_' + str(args.clr) + '_' + str(args.learningRate) + '_' + str(args.questionAwareContext) + '_' + str(args.h_layers) + '_' + str(args.g_layers) + '_' + str(args.f_inner_layers) + '_' + str(args.f_layers) + '_' + str(args.appendPosVec) + '_' + str(args.obj_dim) + '_' + str(args.question_dim) + '_' + str(macro_batch_size)
 
 sess = tf.Session()
 
@@ -65,7 +86,8 @@ def getBatches(dataset, epochs):#generate batches of data
         yield contextInput, contextLengths, contextSentenceLengths, questionInput, questionLengths, answerInput
 
 #build the whole model and run it
-modelBuilder = ModelBuilder(batch_size, question_dim, obj_dim, dictSize)
+#modelBuilder = ModelBuilder(batch_size, question_dim, obj_dim, dictSize)
+modelBuilder = ModelBuilder(batch_size, macro_batch_size, question_dim, obj_dim, dictSize, args.questionAwareContext, args.f_layers, args.f_inner_layers, args.g_layers, args.h_layers, args.appendPosVec)
 
 (inputContext, inputContextLengths, inputContextSentenceLengths, inputQuestion, inputQuestionLengths, objects, question) = modelBuilder.buildWordProcessorLSTMs()
 
@@ -100,7 +122,7 @@ else:
 #(answer, answerGates, answerForCorrectness) = modelBuilder.buildAnswerModel(rnOutput)
 (answer, answerForCorrectness) = modelBuilder.buildAnswerModel(rnOutput)
 
-(inputAnswer, loss, optimizer_op, global_step_tensor, gradientsNorm) = modelBuilder.buildOptimizer(answer)#, answerGates)
+(inputAnswer, loss, accum_ops, zero_ops, train_step, global_step_tensor, gradientsNorm, learningRate) = modelBuilder.buildOptimizer(answer, args.optimizer)#, answerGates)
 
 with tf.name_scope('testing'):
     #correct = tf.reduce_min(tf.cast(tf.equal(inputAnswer, tf.round(answer)), dtype=tf.float32), axis=1)#bad results since the max entries often don't achieve 0.5 so rounding doesnt work
@@ -127,38 +149,59 @@ def checkTrainingAccuracy():
             print(sess.run(answerForCorrectness, feed_dict))
             print("correct")
             print(sess.run(correct, feed_dict))
-            print("gates")
-            print(sess.run(answerGates, feed_dict))
+            #print("gates")
+            #print(sess.run(answerGates, feed_dict))
         if i > 20000:
             break
     totalAcc = sum(acc) / len(acc)
     print("Accuracy: " + str(totalAcc))
 
+def wordSetVecToWordSet(vecOrig):
+    vec = np.copy(vecOrig)
+    maxIndex1 = np.argmax(vec)
+    vec[maxIndex1] -= 1
+    maxIndex2 = np.argmax(vec)
+    vec[maxIndex2] -= 1
+    maxIndex3 = np.argmax(vec)
+    return (wordDict[maxIndex1], wordDict[maxIndex2], wordDict[maxIndex3])
+
+
 def runTest():
     total_acc = []
     for task_name in testingData:
+        if task_name != 'qa16':
+            continue
         print("testing " + task_name)
         acc = []
         for i, (contextInput, contextLengths, contextSentenceLengths, questionInput, questionLengths, answerInput) in enumerate(getBatches(testingData[task_name], 1)):
             #print("validation batch " + str(i))
             feed_dict={inputContext: contextInput, inputContextLengths: contextLengths, inputContextSentenceLengths: contextSentenceLengths, inputQuestion: questionInput, inputQuestionLengths: questionLengths, inputAnswer: answerInput}
             batchAcc = sess.run(accuracy, feed_dict)
+
+            context = contextInput[0]
+            sentences = list(map(lambda sentence: [wordDict[i] for i in sentence], context))
+            print("contextInput")
+            print(str(sentences))
+            question = [wordDict[i] for i in questionInput[0]]
+            print("questionInput")
+            print(question)
             acc.append(batchAcc)
             print("label")
-            print(answerInput)
+            print(wordSetVecToWordSet(answerInput[0]))
             print("prediction")
-            print(sess.run(answer, feed_dict))
+            print(wordSetVecToWordSet(sess.run(answerForCorrectness, feed_dict)[0]))
             print("correct")
             print(sess.run(correct, feed_dict))
-            print("gates")
-            print(sess.run(answerGates, feed_dict))
+            #print("gates")
+            #print(sess.run(answerGates, feed_dict))
         taskAcc = sum(acc) / len(acc)
         print("task accuracy " + str(taskAcc))
         total_acc.append(taskAcc)
     total_acc_val = sum(total_acc) / len(total_acc)
     print("total accuracy " + str(total_acc_val))
 
-weightsDir = os.path.join('weights', '_'.join(sys.argv[1:]))
+weightsDir = os.path.join('weights', paramString)
+#weightsDir = os.path.join('weights', '_'.join(sys.argv[1:]))
 #weightsPath = os.path.join(weightsDir, 'model.ckpt')
 
 lastCheckpoint = tf.train.latest_checkpoint(weightsDir)

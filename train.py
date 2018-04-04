@@ -23,7 +23,7 @@ enabledWeightSaveRestore = True
 
 #training parameters
 batch_size = 1#32
-epoch_count = 40#only two epochs to determine good min/max 
+epoch_count = 60#only two epochs to determine good min/max 
 
 parser = argparse.ArgumentParser()
 parser.add_argument('modelToUse', metavar='modelToUse', type=int, nargs='?', default=1)
@@ -40,6 +40,7 @@ parser.add_argument('--appendPosVec', action='store_true')
 parser.add_argument('--obj_dim', type=int, default=256)
 parser.add_argument('--question_dim', type=int, default=256)
 parser.add_argument('--batch_size', type=int, default=32)#number of samples per training step - combines ceil(args.batch_size / batch_size) many batches into macro-batches containing ceil(args.batch_size / batch_size) * batch_size many samples in total
+parser.add_argument('--batchNorm', action='store_false')
 args = parser.parse_args()
 
 macro_batch_size = args.batch_size#effective batch size - accumulates multiple batches' gradients and then performs a training step
@@ -58,7 +59,7 @@ if args.optimizer != 'adam' and args.optimizer != 'nesterov':
     print('Optimizer must be one of [adam, nesterov]')
     exit()
 
-paramString = str(modelToUse) + '_' + str(layerCount) + '_' + args.optimizer + '_' + str(args.clr) + '_' + str(args.learningRate) + '_' + str(args.questionAwareContext) + '_' + str(args.h_layers) + '_' + str(args.g_layers) + '_' + str(args.f_inner_layers) + '_' + str(args.f_layers) + '_' + str(args.appendPosVec) + '_' + str(args.obj_dim) + '_' + str(args.question_dim) + '_' + str(macro_batch_size)
+paramString = str(modelToUse) + '_' + str(layerCount) + '_' + args.optimizer + '_' + str(args.clr) + '_' + str(args.learningRate) + '_' + str(args.questionAwareContext) + '_' + str(args.h_layers) + '_' + str(args.g_layers) + '_' + str(args.f_inner_layers) + '_' + str(args.f_layers) + '_' + str(args.appendPosVec) + '_' + str(args.obj_dim) + '_' + str(args.question_dim) + '_' + str(macro_batch_size) + '_' + str(args.batchNorm)
 logDir = os.path.join('log', paramString)
 try:
     os.stat(logDir)
@@ -113,34 +114,34 @@ def getBatches(dataset, epochs):#generate batches of data
         yield contextInput, contextLengths, contextSentenceLengths, questionInput, questionLengths, answerInput
 
 #build the whole model and run it
-modelBuilder = ModelBuilder(batch_size, macro_batch_size, question_dim, obj_dim, dictSize, args.questionAwareContext, args.f_layers, args.f_inner_layers, args.g_layers, args.h_layers, args.appendPosVec)
+modelBuilder = ModelBuilder(batch_size, macro_batch_size, question_dim, obj_dim, dictSize, args.questionAwareContext, args.f_layers, args.f_inner_layers, args.g_layers, args.h_layers, args.appendPosVec, args.batchNorm)
 
 (inputContext, inputContextLengths, inputContextSentenceLengths, inputQuestion, inputQuestionLengths, objects, question) = modelBuilder.buildWordProcessorLSTMs()
 
 if modelToUse == 1:
     print("Using model I")
-    rnOutput = modelBuilder.buildRN_I(objects, question)
+    (rnOutput, isTraining) = modelBuilder.buildRN_I(objects, question)
 elif modelToUse == 2:
     print("Using model II")
-    rnOutput = modelBuilder.buildRN_II(objects, question)
+    (rnOutput, isTraining) = modelBuilder.buildRN_II(objects, question)
 elif modelToUse == 3:
     print("Using model III")
-    rnOutput = modelBuilder.buildRN_III(objects, question)
+    (rnOutput, isTraining) = modelBuilder.buildRN_III(objects, question)
 elif modelToUse == 4:
     print("Using model IV")
-    rnOutput = modelBuilder.buildRN_IV(objects, question)
+    (rnOutput, isTraining) = modelBuilder.buildRN_IV(objects, question)
 elif modelToUse == 5:
     print("Using model V")
-    rnOutput = modelBuilder.buildRN_V(objects, question)
+    (rnOutput, isTraining) = modelBuilder.buildRN_V(objects, question)
 elif modelToUse == 6:
     print("Using model VI")
-    rnOutput = modelBuilder.buildRN_VI(objects, question)
+    (rnOutput, isTraining) = modelBuilder.buildRN_VI(objects, question)
 elif modelToUse == 7:
     print("Using model VII")
-    rnOutput = modelBuilder.buildRN_VII_jl(objects, question)
+    (rnOutput, isTraining) = modelBuilder.buildRN_VII_jl(objects, question)
 elif modelToUse == 8 and layerCount >= 0:
     print("Using model VIII with " + str(layerCount) + " layers")
-    rnOutput = modelBuilder.buildRN_VIII_jl(objects, question, layerCount)
+    (rnOutput, isTraining) = modelBuilder.buildRN_VIII_jl(objects, question, layerCount)
 else:
     print("Invalid model number specified: " + str(modelToUse))
     sys.exit(0)
@@ -184,7 +185,7 @@ def runValidation():
         acc = []
         for i, (contextInput, contextLengths, contextSentenceLengths, questionInput, questionLengths, answerInput) in enumerate(getBatches(validationData[task_name], 1)):
             #print("validation batch " + str(i))
-            feed_dict={inputContext: contextInput, inputContextLengths: contextLengths, inputContextSentenceLengths: contextSentenceLengths, inputQuestion: questionInput, inputQuestionLengths: questionLengths, inputAnswer: answerInput}
+            feed_dict={inputContext: contextInput, inputContextLengths: contextLengths, inputContextSentenceLengths: contextSentenceLengths, inputQuestion: questionInput, inputQuestionLengths: questionLengths, inputAnswer: answerInput, isTraining: False}
             batchAcc = sess.run(accuracy, feed_dict)
             acc.append(batchAcc)
             # print("label")
@@ -222,7 +223,7 @@ def train():
             lr = minLR + (maxLR - minLR) * x
         else:
             lr = args.learningRate
-        feed_dict={inputContext: contextInput, inputContextLengths: contextLengths, inputContextSentenceLengths: contextSentenceLengths, inputQuestion: questionInput, inputQuestionLengths: questionLengths, inputAnswer: answerInput}
+        feed_dict={inputContext: contextInput, inputContextLengths: contextLengths, inputContextSentenceLengths: contextSentenceLengths, inputQuestion: questionInput, inputQuestionLengths: questionLengths, inputAnswer: answerInput, isTraining: True}
         #print(sess.run(tf.shape(objects), feed_dict=feed_dict))#debug
         sess.run(accum_ops, feed_dict=feed_dict)
         summary, lossVal, batchAcc = sess.run([training_summary, loss, accuracy], feed_dict=feed_dict)
