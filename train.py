@@ -58,7 +58,7 @@ if args.optimizer != 'adam' and args.optimizer != 'nesterov':
     print('Optimizer must be one of [adam, nesterov]')
     exit()
 
-paramString = str(modelToUse) + '_' + str(layerCount) + '_' + args.optimizer + '_' + str(args.clr) + '_' + str(args.learningRate) + '_' + str(args.questionAwareContext) + '_' + str(args.h_layers) + '_' + str(args.g_layers) + '_' + str(args.f_inner_layers) + '_' + str(args.f_layers) + '_' + str(args.appendPosVec) + '_' + str(args.obj_dim) + '_' + str(args.question_dim)
+paramString = str(modelToUse) + '_' + str(layerCount) + '_' + args.optimizer + '_' + str(args.clr) + '_' + str(args.learningRate) + '_' + str(args.questionAwareContext) + '_' + str(args.h_layers) + '_' + str(args.g_layers) + '_' + str(args.f_inner_layers) + '_' + str(args.f_layers) + '_' + str(args.appendPosVec) + '_' + str(args.obj_dim) + '_' + str(args.question_dim) + '_' + str(macro_batch_size)
 logDir = os.path.join('log', paramString)
 try:
     os.stat(logDir)

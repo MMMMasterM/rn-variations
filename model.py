@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import os, pickle, sys
+import math
 
 #utility functions:
 #generate all combinations of two objects: first from A, second from B
@@ -697,7 +698,7 @@ class ModelBuilder:
             gradients, _ = tf.clip_by_global_norm(gradients, 250.0)#threshold selected as average norm * 5
             #gradient accumulation
             accum_ops = [accum_vars[i].assign_add(gv) for i, gv in enumerate(gradients)]
-            train_step = optimizer.apply_gradients([(accum_vars[i], tv) for i, tv in enumerate(variables)])
+            train_step = optimizer.apply_gradients([(accum_vars[i], tv) for i, tv in enumerate(variables)], global_step=global_step_tensor)
             #TODO: average gradient over macro_batches?
             #optimizer_op = optimizer.apply_gradients(zip(gradients, variables), global_step=global_step_tensor)
             #optimizer_op = tf.train.AdamOptimizer(1e-5).minimize(loss)#without gradient clipping
