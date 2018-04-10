@@ -23,16 +23,16 @@ def getCombinations(inputTensor):#input shape=(batch_size, obj_count, obj_dim)
     # c)tile B -> transpose B into A
 
     #implementation b):
-    inputShape = tf.shape(inputTensor)#[0] is batch_size, [1] is obj_count
-    tensorRep = tf.tile(inputTensor, [1, inputShape[1], 1])
-    tensorA = tf.reshape(tensorRep, shape=(inputShape[0], inputShape[1], inputShape[1], -1))
-    tensorB = tf.transpose(tensorA, perm=[0, 2, 1, 3])
+    inputShape = tf.shape(inputTensor)#[0] is obj_count, [1] is obj_dim
+    tensorRep = tf.tile(inputTensor, [inputShape[0], 1])
+    tensorA = tf.reshape(tensorRep, shape=(inputShape[0], inputShape[0], -1))
+    tensorB = tf.transpose(tensorA, perm=[1, 0, 2])
 
     #alternative formula for tensorB (for implementation a) and c))
-    #tensorRepB = tf.tile(inputTensor, [1, 1, inputShape[1]])
-    #tensorB = tf.reshape(tensorRepB, shape=(inputShape[0], inputShape[1], inputShape[1], -1))
-    ##tensorA = tf.transpose(tensorB, perm=[0, 2, 1, 3])#for implementation c)
-    return tf.concat([tensorB, tensorA], 3)#output shape=(batch_size, obj_count, obj_count, 2*obj_dim)
+    #tensorRepB = tf.tile(inputTensor, [1, inputShape[1]])
+    #tensorB = tf.reshape(tensorRepB, shape=(inputShape[1], inputShape[1], -1))
+    ##tensorA = tf.transpose(tensorB, perm=[1, 0, 2])#for implementation c)
+    return tf.concat([tensorB, tensorA], axis=2)#output shape=(batch_size, obj_count, obj_count, 2*obj_dim)
 
 #generate all combinations (obj_ij, obj_jk)
 def getTransitiveCombine(inputTensor):#input shape=(batch_size, obj_count, obj_count, processed_obj_dim)
@@ -616,7 +616,7 @@ class ModelBuilder:
 
         return result, isTraining
 
-    def buildRN_VIII_jl(self, objects, question, m):#objects shape=(batch_size, obj_count, obj_dim), question shape=(batch_size, question_dim), m=RN layer count
+    def buildRN_VIII_jl(self, objects, objectCounts, question, m):#objects shape=(batch_size, max(obj_count), obj_dim), objectCounts shape=(batch_size), question shape=(batch_size, question_dim), m=RN layer count
         with tf.name_scope('RN_VIII_jl'):
             #model parameters
             h_dim = 256
@@ -671,28 +671,37 @@ class ModelBuilder:
                 layerOutput = layerInput
                 return layerOutput
 
-            inputShape = tf.shape(objects)#[0] is batch_size, [1] is obj_count, [2] = obj_dim
-            objPairs2D = getCombinations(objects)
-            objPairs = tf.reshape(objPairs2D, shape=(-1, 2*self.obj_dim))
-            questionRep = tf.tile(question, [1, inputShape[1]*inputShape[1]])
-            questionRep = tf.reshape(questionRep, shape=(-1, self.question_dim))
+            #inputShape = tf.shape(objects)#optimized: [0] is totalSentenceCount, [1] = obj_dim #[0] is batch_size, [1] is obj_count, [2] = obj_dim
+            objectsBySample = tf.split(objects, objectCounts, num=self.batch_size)
+            objectCountsSq = objectCounts * objectCounts # = [objectCounts[i]*objectCounts[i] for i in range(self.batch_size)]
+            objPairs2D = [getCombinations(objs) for objs in objectsBySample]
+            #objPairs2D = getCombinations(objects)
+            objPairs = tf.concat([tf.reshape(pairs, shape=(-1, 2*self.obj_dim)) for pairs in objPairs2D], axis=0)
+            #objPairs = tf.reshape(objPairs2D, shape=(-1, 2*self.obj_dim))
+            questionRep = [tf.tile(tf.expand_dims(questionForSample, 0), [objectCountsSq[i], 1]) for i, questionForSample in enumerate(tf.unstack(question, num=self.batch_size))]
+            questionRep = tf.concat(questionRep, axis=0)
             gResult = build_g(objPairs, questionRep)
 
             prevResult = gResult#shape=(batch_size*obj_count*obj_count, g_dim)
             prevResultDim = g_dim
             for curLayer in range(m):
-                prevResult2D = tf.reshape(gResult, shape=(self.batch_size, inputShape[1], inputShape[1], prevResultDim))
-                sumJ = tf.reduce_sum(prevResult2D, axis=2)
+                prevResultsBySample = tf.split(prevResult, objectCountsSq, num=self.batch_size)
+                prevResults2D = [tf.reshape(res, shape=(objectCounts[i], objectCounts[i], prevResultDim)) for i, res in enumerate(prevResultsBySample)]
+                #prevResult2D = tf.reshape(prevResult, shape=(self.batch_size, inputShape[1], inputShape[1], prevResultDim))
+                sumJ = [tf.reduce_sum(res2D, axis=1) for res2D in prevResults2D]
                 #sumL = sumJ # correct but unused variable in optimized version
                 #intermedShape = tf.shape(prevResult2D)#[0] is batch_size, [1] is obj_count, [2] is obj_count, [3] is g_dim (for curLayer=0) or h_dim (for curLayer>0)
                 #intermedObjPairs2D = getHeteroCombinations(sumJ, sumL)#naive, unoptimized - optimize using knowledge that sumL=sumJ instead:
-                intermedObjPairs2D = getCombinations(sumJ)#optimized version
-                intermedObjPairs = tf.reshape(intermedObjPairs2D, shape=(-1, 2*prevResultDim))
+                intermedObjPairs2D = [getCombinations(sampleSumJ) for sampleSumJ in sumJ]#optimized version
+                intermedObjPairs = tf.concat([tf.reshape(pairs, shape=(-1, 2*prevResultDim)) for pairs in intermedObjPairs2D], axis=0)
+                #intermedObjPairs = tf.reshape(intermedObjPairs2D, shape=(-1, 2*prevResultDim))
                 hResult = build_h(intermedObjPairs, questionRep)
                 prevResult = hResult
                 prevResultDim = h_dim
-            hResult1D = tf.reshape(prevResult, shape=(self.batch_size, inputShape[1]*inputShape[1], prevResultDim))
-            hSum = tf.reduce_sum(hResult1D, axis=1)
+            prevResultsBySample = tf.split(prevResult, objectCountsSq, num=self.batch_size)
+            #hResult1D = tf.reshape(prevResult, shape=(self.batch_size, inputShape[1]*inputShape[1], prevResultDim))
+            hSum = tf.stack([tf.reduce_sum(res, axis=0) for res in prevResultsBySample])
+            #hSum = tf.reduce_sum(hResult1D, axis=1)
             result = build_f(hSum, question)
         
         return result, isTraining
@@ -762,7 +771,7 @@ class ModelBuilder:
             prevResult = gResult#shape=(batch_size*obj_count*obj_count, g_dim)
             prevResultDim = g_dim
             for curLayer in range(m):
-                prevResult2D = tf.reshape(gResult, shape=(self.batch_size, inputShape[1], inputShape[1], prevResultDim))
+                prevResult2D = tf.reshape(prevResult, shape=(self.batch_size, inputShape[1], inputShape[1], prevResultDim))
                 sumJ = tf.reduce_sum(prevResult2D, axis=2)
                 sumK = tf.reduce_sum(prevResult2D, axis=1)
                 #intermedShape = tf.shape(prevResult2D)#[0] is batch_size, [1] is obj_count, [2] is obj_count, [3] is g_dim (for curLayer=0) or h_dim (for curLayer>0)
@@ -790,9 +799,11 @@ class ModelBuilder:
                 posVecDim = self.obj_dim
                 sLstmHiddenUnits = self.obj_dim
 
-            inputContext = tf.placeholder(tf.int32, shape=(self.batch_size, None, None))
+            inputContext = tf.placeholder(tf.int32, shape=(None, None))#contexts are given concatenated now for optimization - can be split by contextLengths
+            #inputContext = tf.placeholder(tf.int32, shape=(self.batch_size, None, None))
             inputContextLengths = tf.placeholder(tf.int32, shape=(self.batch_size,))#Number of sentences in each context
-            inputContextSentenceLengths = tf.placeholder(tf.int32, shape=(self.batch_size, None))#Number of words in each sentence
+            inputContextSentenceLengths = tf.placeholder(tf.int32, shape=(None))#Number of words in each sentence, concatenated for each sample in the batch
+            #inputContextSentenceLengths = tf.placeholder(tf.int32, shape=(self.batch_size, None))#Number of words in each sentence
             inputQuestion = tf.placeholder(tf.int32, shape=(self.batch_size, None))
             inputQuestionLengths = tf.placeholder(tf.int32, shape=(self.batch_size,))
 
@@ -812,11 +823,11 @@ class ModelBuilder:
             #setup sentence LSTM
             inputContextMaxLength = tf.reduce_max(inputContextLengths)
             inputContextSentenceMaxLength = tf.reduce_max(inputContextSentenceLengths)
-            inputSentences = tf.reshape(inputContext, shape=(self.batch_size*inputContextMaxLength, inputContextSentenceMaxLength))
-            embeddedSentences = tf.nn.embedding_lookup(wordEmbedding, inputSentences)#shape=(batch_size*contextMaxLength, seq_len, embeddingDimension)
+            inputSentences = inputContext#tf.reshape(inputContext, shape=(self.batch_size*inputContextMaxLength, inputContextSentenceMaxLength))
+            embeddedSentences = tf.nn.embedding_lookup(wordEmbedding, inputSentences)#optimized: shape=(varying, seq_len, embeddingDimension) #shape=(batch_size*contextMaxLength, seq_len, embeddingDimension)
             #do we want to broadcast the question to the sentence LSTM here? or rather leave it entirely to the relation network
             #START VARIANTS
-            if self.questionAwareContext:
+            if False: #self.questionAwareContext:#TODO: implement for optimized shapes
                 # a) variant WITH broadcasting the questionLSTMoutputs to all sentences and timesteps (words/tokens):
                 broadcastedQuestionLSTMoutputs = tf.expand_dims(questionLSTMoutputs, axis=1)#add time axis
                 broadcastedQuestionLSTMoutputs = tf.tile(broadcastedQuestionLSTMoutputs, [inputContextMaxLength, inputContextSentenceMaxLength, 1])#repeat along time axis
@@ -829,25 +840,31 @@ class ModelBuilder:
             #END VARIANTS
             #extract final states at the end of each sentence's sequence
             sentenceLSTMoutputs = tf.reshape(sentenceLSTMoutputs, shape=(-1, sLstmHiddenUnits))
-            inputContextSentenceLengths1D = tf.reshape(inputContextSentenceLengths, shape=(-1,))
-            sSeqEndSelector = tf.range(self.batch_size*inputContextMaxLength) * inputContextSentenceMaxLength + (inputContextSentenceLengths1D - 1)
-            sentenceLSTMoutputs = tf.gather(sentenceLSTMoutputs, sSeqEndSelector)#shape=(batch_size*contextMaxLength, sLstmHiddenUnits)
-            sentenceLSTMoutputs = tf.reshape(sentenceLSTMoutputs, shape=(self.batch_size, inputContextMaxLength, sLstmHiddenUnits))#these are the objects for the relation network input
+            totalSentenceCount = tf.reduce_sum(inputContextLengths)
+            #inputContextSentenceLengths1D = tf.reshape(inputContextSentenceLengths, shape=(-1,))
+            sentenceStartOffsets = tf.range(totalSentenceCount) * inputContextSentenceMaxLength
+            sSeqEndSelector = sentenceStartOffsets + inputContextSentenceLengths
+            #sSeqEndSelector = tf.range(self.batch_size*inputContextMaxLength) * inputContextSentenceMaxLength + (inputContextSentenceLengths1D - 1)
+            sentenceLSTMoutputs = tf.gather(sentenceLSTMoutputs, sSeqEndSelector)#optimized: shape=(totalSentenceCount, sLstmHiddenUnits) #shape=(batch_size*contextMaxLength, sLstmHiddenUnits)
+            #sentenceLSTMoutputs = tf.reshape(sentenceLSTMoutputs, shape=(self.batch_size, inputContextMaxLength, sLstmHiddenUnits))#these are the objects for the relation network input
 
             #tag sentences with position encodings to give information about their order of occurrance in the context (position encoding: https://arxiv.org/pdf/1503.08895.pdf)
-            tagMatrixJ = tf.range(1, tf.cast(inputContextMaxLength + 1, tf.float32), dtype=tf.float32) / tf.cast(inputContextMaxLength, tf.float32)
-            tagMatrixK = tf.range(1, posVecDim + 1, dtype=tf.float32) / posVecDim
-            tagMatrixTerm1 = 1 - tf.tile(tf.expand_dims(tagMatrixJ, axis=1), [1, posVecDim])#shape=(inputContextMaxLength, posVecDim)
-            tagMatrixTerm2 = tf.tile(tf.expand_dims(tagMatrixK, axis=0), [inputContextMaxLength, 1])#shape=(inputContextMaxLength, posVecDim)
-            tagMatrixTerm3 = tagMatrixTerm1 * 2 - 1
-            tagMatrix = tagMatrixTerm1 - tagMatrixTerm2 * tagMatrixTerm3#shape=(inputContextMaxLength, posVecDim)
-            tagMatrix = tf.tile(tf.expand_dims(tagMatrix, axis=0), [self.batch_size, 1, 1])#shape=(batch_size, inputContextMaxLength, posVecDim)
-            if self.appendPosVec:
-                sentenceLSTMoutputs = tf.concat([sentenceLSTMoutputs, tagMatrix], axis=2)
-            else:
-                sentenceLSTMoutputs = sentenceLSTMoutputs * tagMatrix
+            def buildTagMatrix(contextLength):
+                tagMatrixJ = tf.range(1, tf.cast(contextLength + 1, tf.float32), dtype=tf.float32) / tf.cast(contextLength, tf.float32)
+                tagMatrixK = tf.range(1, posVecDim + 1, dtype=tf.float32) / posVecDim
+                tagMatrixTerm1 = 1 - tf.tile(tf.expand_dims(tagMatrixJ, axis=1), [1, posVecDim])#shape=(contextLength, posVecDim)
+                tagMatrixTerm2 = tf.tile(tf.expand_dims(tagMatrixK, axis=0), [contextLength, 1])#shape=(contextLength, posVecDim)
+                tagMatrixTerm3 = tagMatrixTerm1 * 2 - 1
+                tagMatrix = tagMatrixTerm1 - tagMatrixTerm2 * tagMatrixTerm3#shape=(contextLength, posVecDim)
+                #tagMatrix = tf.tile(tf.expand_dims(tagMatrix, axis=0), [self.batch_size, 1, 1])#shape=(batch_size, inputContextMaxLength, posVecDim)
+                return tagMatrix
 
-            #TODO: optimization: dont apply the LSTMs to the padding-sentences (empty sentences added to make all contexts in a batch the same sentence-count)
+            batchTagMatrix = tf.concat([buildTagMatrix(contextLength) for contextLength in tf.unstack(inputContextLengths, num=self.batch_size)], axis=0)
+
+            if self.appendPosVec:
+                sentenceLSTMoutputs = tf.concat([sentenceLSTMoutputs, batchTagMatrix], axis=1)
+            else:
+                sentenceLSTMoutputs = sentenceLSTMoutputs * batchTagMatrix
 
         #return inputContext, inputContextLengths, inputQuestion, inputQuestionLengths, answer, answerGates
         return inputContext, inputContextLengths, inputContextSentenceLengths, inputQuestion, inputQuestionLengths, sentenceLSTMoutputs, questionLSTMoutputs

@@ -115,8 +115,10 @@ def getBatches(dataset, epochs):#generate batches of data
         maxQuestionLen = max(questionLengths)
         #build tensors from data and apply padding
         emptySentence = [0]*maxContextSentenceLen#empty sentence for batch context padding
-        contextInput = [[sentence + [0]*(maxContextSentenceLen - len(sentence)) for sentence in context] + [emptySentence]*(maxContextLen - len(context)) for context, question, answer in samples]
-        contextSentenceLengths = [sentenceLengths + [1]*(maxContextLen - len(sentenceLengths)) for sentenceLengths in contextSentenceLengths]#apply padding for tensorflow tensor - padding with 1 instead of 0 so sequence-end-selectors dont fail with bufferunderrun
+        contextInput = sum([[sentence + [0]*(maxContextSentenceLen - len(sentence)) for sentence in context] for context, question, answer in samples], [])#concatenated
+        #contextInput = [[sentence + [0]*(maxContextSentenceLen - len(sentence)) for sentence in context] + [emptySentence]*(maxContextLen - len(context)) for context, question, answer in samples]
+        contextSentenceLengths = sum(contextSentenceLengths, [])#concatenated
+        #contextSentenceLengths = [sentenceLengths + [1]*(maxContextLen - len(sentenceLengths)) for sentenceLengths in contextSentenceLengths]#apply padding for tensorflow tensor - padding with 1 instead of 0 so sequence-end-selectors dont fail with bufferunderrun
         questionInput = [question + [0]*(maxQuestionLen - len(question)) for context, question, answer in samples]
         answerInput = [answer for context, question, answer in samples]
         yield contextInput, contextLengths, contextSentenceLengths, questionInput, questionLengths, answerInput
@@ -149,7 +151,7 @@ elif modelToUse == 7:
     (rnOutput, isTraining) = modelBuilder.buildRN_VII_jl(objects, question)
 elif modelToUse == 8 and layerCount >= 0:
     print("Using model VIII with " + str(layerCount) + " layers")
-    (rnOutput, isTraining) = modelBuilder.buildRN_VIII_jl(objects, question, layerCount)
+    (rnOutput, isTraining) = modelBuilder.buildRN_VIII_jl(objects, inputContextLengths, question, layerCount)
 else:
     print("Invalid model number specified: " + str(modelToUse))
     sys.exit(0)
