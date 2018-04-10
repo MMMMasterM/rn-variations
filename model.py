@@ -62,7 +62,7 @@ def getTripleCombinations(inputTensor):#input shape=(batch_size, obj_count, obj_
 
 
 class ModelBuilder:
-    def __init__(self, batch_size, macro_batch_size, question_dim, obj_dim, dictSize, questionAwareContext, f_layers, f_inner_layers, g_layers, h_layers, appendPosVec, batchNorm):
+    def __init__(self, batch_size, macro_batch_size, question_dim, obj_dim, dictSize, questionAwareContext, f_layers, f_inner_layers, g_layers, h_layers, appendPosVec, batchNorm, layerNorm):
         self.batch_size = batch_size
         self.macro_batch_size = macro_batch_size
         self.question_dim = question_dim
@@ -75,6 +75,7 @@ class ModelBuilder:
         self.h_layers = h_layers
         self.appendPosVec = appendPosVec
         self.batchNorm = batchNorm
+        self.layerNorm = layerNorm
 
     def buildRN_I(self, objects, question):#objects shape=(batch_size, obj_count, obj_dim), question shape=(batch_size, question_dim)
         with tf.name_scope('RN_I'):
@@ -91,7 +92,9 @@ class ModelBuilder:
                 for i in range(self.g_layers):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim, activation_fn=None)
                     if self.batchNorm:
-                        layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                        layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                    if self.layerNorm:
+                        layerInput = tf.contrib.layers.layer_norm(layerInput)
                     layerInput = tf.nn.relu(layerInput)
                 layerOutput = layerInput
                 return layerOutput
@@ -101,7 +104,9 @@ class ModelBuilder:
                 for i in range(self.f_layers):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim, activation_fn=None)
                     if self.batchNorm:
-                        layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                        layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                    if self.layerNorm:
+                        layerInput = tf.contrib.layers.layer_norm(layerInput)
                     layerInput = tf.nn.relu(layerInput)
                 layerOutput = layerInput
                 return layerOutput
@@ -134,7 +139,9 @@ class ModelBuilder:
                 for i in range(self.g_layers):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim, activation_fn=None)
                     if self.batchNorm:
-                        layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                        layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                    if self.layerNorm:
+                        layerInput = tf.contrib.layers.layer_norm(layerInput)
                     layerInput = tf.nn.relu(layerInput)
                 layerOutput = layerInput
                 return layerOutput
@@ -144,7 +151,9 @@ class ModelBuilder:
                 for i in range(self.f_layers):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim, activation_fn=None)
                     if self.batchNorm:
-                        layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                        layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                    if self.layerNorm:
+                        layerInput = tf.contrib.layers.layer_norm(layerInput)
                     layerInput = tf.nn.relu(layerInput)
                 layerOutput = layerInput
                 return layerOutput
@@ -179,7 +188,9 @@ class ModelBuilder:
                 for i in range(self.h_layers):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, h_dim, activation_fn=None)
                     if self.batchNorm:
-                        layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                        layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                    if self.layerNorm:
+                        layerInput = tf.contrib.layers.layer_norm(layerInput)
                     layerInput = tf.nn.relu(layerInput)
                 layerOutput = layerInput
                 return layerOutput
@@ -189,7 +200,9 @@ class ModelBuilder:
                 for i in range(self.g_layers):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim, activation_fn=None)
                     if self.batchNorm:
-                        layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                        layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                    if self.layerNorm:
+                        layerInput = tf.contrib.layers.layer_norm(layerInput)
                     layerInput = tf.nn.relu(layerInput)
                 layerOutput = layerInput
                 return layerOutput
@@ -199,7 +212,9 @@ class ModelBuilder:
                 for i in range(self.f_layers):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim, activation_fn=None)
                     if self.batchNorm:
-                        layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                        layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                    if self.layerNorm:
+                        layerInput = tf.contrib.layers.layer_norm(layerInput)
                     layerInput = tf.nn.relu(layerInput)
                 layerOutput = layerInput
                 return layerOutput
@@ -241,7 +256,9 @@ class ModelBuilder:
                 for i in range(self.h_layers):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, h_dim, activation_fn=None)
                     if self.batchNorm:
-                        layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                        layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                    if self.layerNorm:
+                        layerInput = tf.contrib.layers.layer_norm(layerInput)
                     layerInput = tf.nn.relu(layerInput)
                 layerOutput = layerInput
                 return layerOutput
@@ -251,7 +268,9 @@ class ModelBuilder:
                 for i in range(self.g_layers):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim, activation_fn=None)
                     if self.batchNorm:
-                        layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                        layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                    if self.layerNorm:
+                        layerInput = tf.contrib.layers.layer_norm(layerInput)
                     layerInput = tf.nn.relu(layerInput)
                 layerOutput = layerInput
                 return layerOutput
@@ -261,7 +280,9 @@ class ModelBuilder:
                 for i in range(self.f_layers):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim, activation_fn=None)
                     if self.batchNorm:
-                        layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                        layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                    if self.layerNorm:
+                        layerInput = tf.contrib.layers.layer_norm(layerInput)
                     layerInput = tf.nn.relu(layerInput)
                 layerOutput = layerInput
                 return layerOutput
@@ -305,7 +326,9 @@ class ModelBuilder:
                 for i in range(self.h_layers):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, h_dim, activation_fn=None)
                     if self.batchNorm:
-                        layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                        layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                    if self.layerNorm:
+                        layerInput = tf.contrib.layers.layer_norm(layerInput)
                     layerInput = tf.nn.relu(layerInput)
                 layerOutput = layerInput
                 return layerOutput
@@ -315,7 +338,9 @@ class ModelBuilder:
                 for i in range(self.g_layers):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim, activation_fn=None)
                     if self.batchNorm:
-                        layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                        layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                    if self.layerNorm:
+                        layerInput = tf.contrib.layers.layer_norm(layerInput)
                     layerInput = tf.nn.relu(layerInput)
                 layerOutput = layerInput
                 return layerOutput
@@ -325,7 +350,9 @@ class ModelBuilder:
                 for i in range(self.f_inner_layers):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, f_inner_dim, activation_fn=None)
                     if self.batchNorm:
-                        layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                        layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                    if self.layerNorm:
+                        layerInput = tf.contrib.layers.layer_norm(layerInput)
                     layerInput = tf.nn.relu(layerInput)
                 layerOutput = layerInput
                 return layerOutput
@@ -335,7 +362,9 @@ class ModelBuilder:
                 for i in range(self.f_layers):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim, activation_fn=None)
                     if self.batchNorm:
-                        layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                        layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                    if self.layerNorm:
+                        layerInput = tf.contrib.layers.layer_norm(layerInput)
                     layerInput = tf.nn.relu(layerInput)
                 layerOutput = layerInput
                 return layerOutput
@@ -384,7 +413,9 @@ class ModelBuilder:
                 for i in range(self.h_layers):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, h_dim, activation_fn=None)
                     if self.batchNorm:
-                        layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                        layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                    if self.layerNorm:
+                        layerInput = tf.contrib.layers.layer_norm(layerInput)
                     layerInput = tf.nn.relu(layerInput)
                 layerOutput = layerInput
                 return layerOutput
@@ -394,7 +425,9 @@ class ModelBuilder:
                 for i in range(self.g_layers):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim, activation_fn=None)
                     if self.batchNorm:
-                        layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                        layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                    if self.layerNorm:
+                        layerInput = tf.contrib.layers.layer_norm(layerInput)
                     layerInput = tf.nn.relu(layerInput)
                 layerOutput = layerInput
                 return layerOutput
@@ -404,7 +437,9 @@ class ModelBuilder:
                 for i in range(self.f_inner_layers):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, f_inner_dim, activation_fn=None)
                     if self.batchNorm:
-                        layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                        layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                    if self.layerNorm:
+                        layerInput = tf.contrib.layers.layer_norm(layerInput)
                     layerInput = tf.nn.relu(layerInput)
                 layerOutput = layerInput
                 return layerOutput
@@ -414,7 +449,9 @@ class ModelBuilder:
                 for i in range(self.f_layers):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim, activation_fn=None)
                     if self.batchNorm:
-                        layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                        layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                    if self.layerNorm:
+                        layerInput = tf.contrib.layers.layer_norm(layerInput)
                     layerInput = tf.nn.relu(layerInput)
                 layerOutput = layerInput
                 return layerOutput
@@ -461,7 +498,9 @@ class ModelBuilder:
                 for i in range(self.g_layers):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim, activation_fn=None)
                     if self.batchNorm:
-                        layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                        layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                    if self.layerNorm:
+                        layerInput = tf.contrib.layers.layer_norm(layerInput)
                     layerInput = tf.nn.relu(layerInput)
                 layerOutput = layerInput
                 return layerOutput
@@ -471,7 +510,9 @@ class ModelBuilder:
                 for i in range(self.h_layers):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, h_dim, activation_fn=None)
                     if self.batchNorm:
-                        layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                        layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                    if self.layerNorm:
+                        layerInput = tf.contrib.layers.layer_norm(layerInput)
                     layerInput = tf.nn.relu(layerInput)
                 layerOutput = layerInput
                 return layerOutput
@@ -481,7 +522,9 @@ class ModelBuilder:
                 for i in range(self.f_layers):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim, activation_fn=None)
                     if self.batchNorm:
-                        layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                        layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                    if self.layerNorm:
+                        layerInput = tf.contrib.layers.layer_norm(layerInput)
                     layerInput = tf.nn.relu(layerInput)
                 layerOutput = layerInput
                 return layerOutput
@@ -523,7 +566,9 @@ class ModelBuilder:
                 for i in range(self.g_layers):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim, activation_fn=None)
                     if self.batchNorm:
-                        layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                        layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                    if self.layerNorm:
+                        layerInput = tf.contrib.layers.layer_norm(layerInput)
                     layerInput = tf.nn.relu(layerInput)
                 layerOutput = layerInput
                 return layerOutput
@@ -533,7 +578,9 @@ class ModelBuilder:
                 for i in range(self.h_layers):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, h_dim, activation_fn=None)
                     if self.batchNorm:
-                        layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                        layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                    if self.layerNorm:
+                        layerInput = tf.contrib.layers.layer_norm(layerInput)
                     layerInput = tf.nn.relu(layerInput)
                 layerOutput = layerInput
                 return layerOutput
@@ -543,7 +590,9 @@ class ModelBuilder:
                 for i in range(self.f_layers):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim, activation_fn=None)
                     if self.batchNorm:
-                        layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                        layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                    if self.layerNorm:
+                        layerInput = tf.contrib.layers.layer_norm(layerInput)
                     layerInput = tf.nn.relu(layerInput)
                 layerOutput = layerInput
                 return layerOutput
@@ -585,7 +634,9 @@ class ModelBuilder:
                 for i in range(self.g_layers):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim, activation_fn=None)
                     if self.batchNorm:
-                        layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                        layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                    if self.layerNorm:
+                        layerInput = tf.contrib.layers.layer_norm(layerInput)
                     layerInput = tf.nn.relu(layerInput)
                 layerOutput = layerInput
                 return layerOutput
@@ -595,7 +646,9 @@ class ModelBuilder:
                 for i in range(self.h_layers):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, h_dim, activation_fn=None)
                     if self.batchNorm:
-                        layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                        layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                    if self.layerNorm:
+                        layerInput = tf.contrib.layers.layer_norm(layerInput)
                     layerInput = tf.nn.relu(layerInput)
                 layerOutput = layerInput
                 return layerOutput
@@ -605,11 +658,15 @@ class ModelBuilder:
                 for i in range(self.f_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim_internal, activation_fn=None)
                     if self.batchNorm:
-                        layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                        layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                    if self.layerNorm:
+                        layerInput = tf.contrib.layers.layer_norm(layerInput)
                     layerInput = tf.nn.relu(layerInput)
                 layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim, activation_fn=None)
                 if self.batchNorm:
-                    layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                    layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                if self.layerNorm:
+                    layerInput = tf.contrib.layers.layer_norm(layerInput)
                 layerInput = tf.nn.relu(layerInput)
                 layerOutput = layerInput
                 return layerOutput
@@ -658,7 +715,9 @@ class ModelBuilder:
                 for i in range(self.g_layers):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim, activation_fn=None)
                     if self.batchNorm:
-                        layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                        layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                    if self.layerNorm:
+                        layerInput = tf.contrib.layers.layer_norm(layerInput)
                     layerInput = tf.nn.relu(layerInput)
                 layerOutput = layerInput
                 return layerOutput
@@ -668,7 +727,9 @@ class ModelBuilder:
                 for i in range(self.h_layers):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, h_dim, activation_fn=None)
                     if self.batchNorm:
-                        layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                        layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                    if self.layerNorm:
+                        layerInput = tf.contrib.layers.layer_norm(layerInput)
                     layerInput = tf.nn.relu(layerInput)
                 layerOutput = layerInput
                 return layerOutput
@@ -678,11 +739,15 @@ class ModelBuilder:
                 for i in range(self.f_layers-1):
                     layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim_internal, activation_fn=None)
                     if self.batchNorm:
-                        layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                        layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                    if self.layerNorm:
+                        layerInput = tf.contrib.layers.layer_norm(layerInput)
                     layerInput = tf.nn.relu(layerInput)
                 layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim, activation_fn=None)
                 if self.batchNorm:
-                    layerInput = tf.contrib.layers.batch_norm(layerInput, is_training=isTraining)
+                    layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
+                if self.layerNorm:
+                    layerInput = tf.contrib.layers.layer_norm(layerInput)
                 layerInput = tf.nn.relu(layerInput)
                 layerOutput = layerInput
                 return layerOutput
@@ -840,6 +905,7 @@ class ModelBuilder:
                 optimizer = tf.train.AdamOptimizer(learningRate)
                 print('Using adam')
             #optimizer = tf.train.AdamOptimizer(1e-5)
+            batches_per_macro_batch = math.ceil(self.macro_batch_size / self.batch_size)
             tvs = tf.trainable_variables()
             accum_vars = [tf.Variable(tf.zeros_like(tv.initialized_value()), trainable=False) for tv in tvs]
             zero_ops = [tv.assign(tf.zeros_like(tv)) for tv in accum_vars]
@@ -851,7 +917,7 @@ class ModelBuilder:
             update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
             with tf.control_dependencies(update_ops):
                 accum_ops = [accum_vars[i].assign_add(gv) for i, gv in enumerate(gradients)]
-            train_step = optimizer.apply_gradients([(accum_vars[i], tv) for i, tv in enumerate(variables)], global_step=global_step_tensor)
+            train_step = optimizer.apply_gradients([(accum_vars[i]/batches_per_macro_batch, tv) for i, tv in enumerate(variables)], global_step=global_step_tensor)
             #TODO: average gradient over macro_batches?
             #optimizer_op = optimizer.apply_gradients(zip(gradients, variables), global_step=global_step_tensor)
             #optimizer_op = tf.train.AdamOptimizer(1e-5).minimize(loss)#without gradient clipping

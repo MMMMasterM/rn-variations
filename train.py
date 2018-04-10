@@ -40,8 +40,12 @@ parser.add_argument('--appendPosVec', action='store_true')
 parser.add_argument('--obj_dim', type=int, default=256)
 parser.add_argument('--question_dim', type=int, default=256)
 parser.add_argument('--batch_size', type=int, default=32)#number of samples per training step - combines ceil(args.batch_size / batch_size) many batches into macro-batches containing ceil(args.batch_size / batch_size) * batch_size many samples in total
-parser.add_argument('--batchNorm', action='store_false')
+parser.add_argument('--batchNorm', action='store_true')
+parser.add_argument('--layerNorm', action='store_true')
 args = parser.parse_args()
+
+if args.batchNorm:
+    args.layerNorm = False#do not allow batchNorm and layerNorm at the same time - what would happen though?
 
 macro_batch_size = args.batch_size#effective batch size - accumulates multiple batches' gradients and then performs a training step
 
@@ -59,7 +63,7 @@ if args.optimizer != 'adam' and args.optimizer != 'nesterov':
     print('Optimizer must be one of [adam, nesterov]')
     exit()
 
-paramString = str(modelToUse) + '_' + str(layerCount) + '_' + args.optimizer + '_' + str(args.clr) + '_' + str(args.learningRate) + '_' + str(args.questionAwareContext) + '_' + str(args.h_layers) + '_' + str(args.g_layers) + '_' + str(args.f_inner_layers) + '_' + str(args.f_layers) + '_' + str(args.appendPosVec) + '_' + str(args.obj_dim) + '_' + str(args.question_dim) + '_' + str(macro_batch_size) + '_' + str(args.batchNorm)
+paramString = str(modelToUse) + '_' + str(layerCount) + '_' + args.optimizer + '_' + str(args.clr) + '_' + str(args.learningRate) + '_' + str(args.questionAwareContext) + '_' + str(args.h_layers) + '_' + str(args.g_layers) + '_' + str(args.f_inner_layers) + '_' + str(args.f_layers) + '_' + str(args.appendPosVec) + '_' + str(args.obj_dim) + '_' + str(args.question_dim) + '_' + str(macro_batch_size) + '_' + str(args.batchNorm) + '_' + str(args.layerNorm)
 logDir = os.path.join('log', paramString)
 try:
     os.stat(logDir)
@@ -72,6 +76,10 @@ if modelToUse == 1 or modelToUse == 7 or modelToUse == 8:
     batch_size = 8
 else:
     print("Using batch_size=1 for models with cubic complexity")
+    batch_size = 1
+
+if args.batchNorm:
+    print("Forcing batch_size=1 for batchnorm due to padding")
     batch_size = 1
 
 clr_stepsize = math.floor(2 * len(trainingData) / batch_size)#as per recommendation in the CLR paper (https://arxiv.org/pdf/1506.01186.pdf), 2-10 times the number of iterations in an epoch
@@ -114,7 +122,7 @@ def getBatches(dataset, epochs):#generate batches of data
         yield contextInput, contextLengths, contextSentenceLengths, questionInput, questionLengths, answerInput
 
 #build the whole model and run it
-modelBuilder = ModelBuilder(batch_size, macro_batch_size, question_dim, obj_dim, dictSize, args.questionAwareContext, args.f_layers, args.f_inner_layers, args.g_layers, args.h_layers, args.appendPosVec, args.batchNorm)
+modelBuilder = ModelBuilder(batch_size, macro_batch_size, question_dim, obj_dim, dictSize, args.questionAwareContext, args.f_layers, args.f_inner_layers, args.g_layers, args.h_layers, args.appendPosVec, args.batchNorm, args.layerNorm)
 
 (inputContext, inputContextLengths, inputContextSentenceLengths, inputQuestion, inputQuestionLengths, objects, question) = modelBuilder.buildWordProcessorLSTMs()
 
@@ -278,6 +286,21 @@ if enabledWeightSaveRestore:
 else:
     sess.run(tf.global_variables_initializer())
     print('Weights initialized.')
+
+total_parameters = 0
+for variable in tf.trainable_variables():
+    # shape is an array of tf.Dimension
+    shape = variable.get_shape()
+    print(shape)
+    print(len(shape))
+    variable_parameters = 1
+    for dim in shape:
+        print(dim)
+        variable_parameters *= dim.value
+    print(variable_parameters)
+    total_parameters += variable_parameters
+print('Total weight count:')
+print(total_parameters)
 
 train()
 
