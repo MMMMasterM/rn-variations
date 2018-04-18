@@ -843,7 +843,7 @@ class ModelBuilder:
             totalSentenceCount = tf.reduce_sum(inputContextLengths)
             #inputContextSentenceLengths1D = tf.reshape(inputContextSentenceLengths, shape=(-1,))
             sentenceStartOffsets = tf.range(totalSentenceCount) * inputContextSentenceMaxLength
-            sSeqEndSelector = sentenceStartOffsets + inputContextSentenceLengths
+            sSeqEndSelector = sentenceStartOffsets + (inputContextSentenceLengths - 1)
             #sSeqEndSelector = tf.range(self.batch_size*inputContextMaxLength) * inputContextSentenceMaxLength + (inputContextSentenceLengths1D - 1)
             sentenceLSTMoutputs = tf.gather(sentenceLSTMoutputs, sSeqEndSelector)#optimized: shape=(totalSentenceCount, sLstmHiddenUnits) #shape=(batch_size*contextMaxLength, sLstmHiddenUnits)
             #sentenceLSTMoutputs = tf.reshape(sentenceLSTMoutputs, shape=(self.batch_size, inputContextMaxLength, sLstmHiddenUnits))#these are the objects for the relation network input
