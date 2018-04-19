@@ -1,6 +1,8 @@
 import os, re, itertools
 import numpy as np
 import pickle
+import random
+import sys
 
 print("Preprocessing dataset...")
 
@@ -76,8 +78,9 @@ def paragraphsFromLines(linesIter):
 
 def cqaFromParagraphs(paragraphIter):
     for paragraph in paragraphIter:
+        questionIndices = []
         context = []
-        for line in paragraph:
+        for lineIndex, line in enumerate(paragraph):
             line = line.lower()
             parts = line.split('\t')
             if (len(parts) == 1):#context
@@ -96,10 +99,23 @@ def cqaFromParagraphs(paragraphIter):
                     answerVecs[i, token] = 1
                 answer = np.sum(answerVecs, axis=0)
                 answer[0] = 3 - len(tokens)#make sure answer sums to 3 since that is the max word count - also wordIndex 0 is the unused word
+                #support - make every context exactly targetContextSize sentences
+                resultContext = list(context)
+                if len(sys.argv) >= 2:
+                    targetContextSize = int(sys.argv[1])
+                    supportIndices = [int(num)-1 - len([i for i in questionIndices if int(num)-1 > i]) for num in parts[2].split(' ')]
+                    remainingIndices = list(range(len(resultContext)))
+                    for i in sorted(supportIndices, reverse=True):
+                        del remainingIndices[i]
+                    randomIndices = random.sample(remainingIndices, min(len(remainingIndices), targetContextSize - len(supportIndices)))
+                    contextIndices = sorted(randomIndices + supportIndices)
+                    resultContext = [resultContext[i] for i in contextIndices]
+                    resultContext = resultContext + [[] for i in range(targetContextSize - len(resultContext))]#fill up to targetContextSize
                 #print(answer)
                 #add "." tokens at the end of each sentence
-                terminatedContext = [sentence + [wordIndices['.']] for sentence in context]
+                terminatedContext = [sentence + [wordIndices['.']] for sentence in resultContext]
                 yield terminatedContext, question, answer
+                questionIndices = questionIndices + [lineIndex]
 
 wordDict = {}
 for word, num in wordIndices.items():
