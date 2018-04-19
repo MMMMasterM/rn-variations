@@ -62,7 +62,7 @@ def getTripleCombinations(inputTensor):#input shape=(batch_size, obj_count, obj_
 
 
 class ModelBuilder:
-    def __init__(self, batch_size, macro_batch_size, question_dim, obj_dim, dictSize, questionAwareContext, f_layers, f_inner_layers, g_layers, h_layers, appendPosVec, batchNorm, layerNorm):
+    def __init__(self, batch_size, macro_batch_size, question_dim, obj_dim, dictSize, questionAwareContext, f_layers, f_inner_layers, g_layers, h_layers, appendPosVec, batchNorm, layerNorm, weightPenalty):
         self.batch_size = batch_size
         self.macro_batch_size = macro_batch_size
         self.question_dim = question_dim
@@ -76,6 +76,7 @@ class ModelBuilder:
         self.appendPosVec = appendPosVec
         self.batchNorm = batchNorm
         self.layerNorm = layerNorm
+        self.weightPenalty = weightPenalty
 
     def buildRN_I(self, objects, question):#objects shape=(batch_size, obj_count, obj_dim), question shape=(batch_size, question_dim)
         with tf.name_scope('RN_I'):
@@ -632,7 +633,7 @@ class ModelBuilder:
             def build_g(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*obj_dim)
                 layerInput = tf.concat([objPairs, question], 1)
                 for i in range(self.g_layers):
-                    layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim, activation_fn=None)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, g_dim, activation_fn=None, weights_regularizer = tf.contrib.layers.l2_regularizer(scale=self.weightPenalty))
                     if self.batchNorm:
                         layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
                     if self.layerNorm:
@@ -644,7 +645,7 @@ class ModelBuilder:
             def build_h(objPairs, question):#objPairs shape=(batch_size*obj_count*obj_count, 2*g_dim)
                 layerInput = tf.concat([objPairs, question], 1)
                 for i in range(self.h_layers):
-                    layerInput = tf.contrib.layers.fully_connected(layerInput, h_dim, activation_fn=None)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, h_dim, activation_fn=None, weights_regularizer = tf.contrib.layers.l2_regularizer(scale=self.weightPenalty))
                     if self.batchNorm:
                         layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
                     if self.layerNorm:
@@ -656,13 +657,13 @@ class ModelBuilder:
             def build_f(hSum, question):#gSum shape=(batch_size, h_dim)
                 layerInput = hSum
                 for i in range(self.f_layers-1):
-                    layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim_internal, activation_fn=None)
+                    layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim_internal, activation_fn=None, weights_regularizer = tf.contrib.layers.l2_regularizer(scale=self.weightPenalty))
                     if self.batchNorm:
                         layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
                     if self.layerNorm:
                         layerInput = tf.contrib.layers.layer_norm(layerInput)
                     layerInput = tf.nn.relu(layerInput)
-                layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim, activation_fn=None)
+                layerInput = tf.contrib.layers.fully_connected(layerInput, f_dim, activation_fn=None, weights_regularizer = tf.contrib.layers.l2_regularizer(scale=self.weightPenalty))
                 if self.batchNorm:
                     layerInput = tf.layers.batch_normalization(layerInput, training=isTraining, fused=False)
                 if self.layerNorm:
@@ -913,7 +914,8 @@ class ModelBuilder:
             learningRate = tf.placeholder(tf.float32, shape=())
             inputAnswerForLoss = inputAnswer / 3#since they represent the sum of 3 one-hot vectors, normalize to make them a probability distribution for the loss
             #loss = tf.losses.mean_squared_error(labels=inputAnswer, predictions=answer) * dictSize - tf.reduce_mean(tf.square(answerGates - 0.5)) + 0.25#regularization term to enforce gate values close to 0 or 1
-            loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=answer, labels=inputAnswerForLoss))# - tf.reduce_mean(tf.square(answerGates - 0.5)) + 0.25#regularization term to enforce gate values close to 0 or 1
+            reg_ws = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+            loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=answer, labels=inputAnswerForLoss)) + tf.reduce_sum(reg_ws)# - tf.reduce_mean(tf.square(answerGates - 0.5)) + 0.25#regularization term to enforce gate values close to 0 or 1
             #softmax_cross_entropy_with_logits is not suitable for outputs that are not probability distributions (which might be a problem for multi-answer questions) - still gives surprisingly good results for a first attempt
             if optimizerAlg == 'nesterov':
                 optimizer = tf.train.MomentumOptimizer(learningRate, 0.9, use_nesterov=True)

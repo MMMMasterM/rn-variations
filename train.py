@@ -7,6 +7,8 @@ from itertools import islice
 from model import ModelBuilder
 import math
 
+np.random.seed(7)#debugging
+
 #load dictionary
 with open(os.path.join('processeddata', 'dictionary.txt'), 'rb') as f:
     wordIndices = pickle.load(f)
@@ -42,6 +44,7 @@ parser.add_argument('--question_dim', type=int, default=256)
 parser.add_argument('--batch_size', type=int, default=32)#number of samples per training step - combines ceil(args.batch_size / batch_size) many batches into macro-batches containing ceil(args.batch_size / batch_size) * batch_size many samples in total
 parser.add_argument('--batchNorm', action='store_true')
 parser.add_argument('--layerNorm', action='store_true')
+parser.add_argument('--weightPenalty', type=float, default=1e-4)
 args = parser.parse_args()
 
 if args.batchNorm:
@@ -63,7 +66,7 @@ if args.optimizer != 'adam' and args.optimizer != 'nesterov':
     print('Optimizer must be one of [adam, nesterov]')
     exit()
 
-paramString = str(modelToUse) + '_' + str(layerCount) + '_' + args.optimizer + '_' + str(args.clr) + '_' + str(args.learningRate) + '_' + str(args.questionAwareContext) + '_' + str(args.h_layers) + '_' + str(args.g_layers) + '_' + str(args.f_inner_layers) + '_' + str(args.f_layers) + '_' + str(args.appendPosVec) + '_' + str(args.obj_dim) + '_' + str(args.question_dim) + '_' + str(macro_batch_size) + '_' + str(args.batchNorm) + '_' + str(args.layerNorm)
+paramString = str(modelToUse) + '_' + str(layerCount) + '_' + args.optimizer + '_' + str(args.clr) + '_' + str(args.learningRate) + '_' + str(args.questionAwareContext) + '_' + str(args.h_layers) + '_' + str(args.g_layers) + '_' + str(args.f_inner_layers) + '_' + str(args.f_layers) + '_' + str(args.appendPosVec) + '_' + str(args.obj_dim) + '_' + str(args.question_dim) + '_' + str(macro_batch_size) + '_' + str(args.batchNorm) + '_' + str(args.layerNorm) + '_' + str(args.weightPenalty)
 logDir = os.path.join('log', paramString)
 try:
     os.stat(logDir)
@@ -124,7 +127,7 @@ def getBatches(dataset, epochs):#generate batches of data
         yield contextInput, contextLengths, contextSentenceLengths, questionInput, questionLengths, answerInput
 
 #build the whole model and run it
-modelBuilder = ModelBuilder(batch_size, macro_batch_size, question_dim, obj_dim, dictSize, args.questionAwareContext, args.f_layers, args.f_inner_layers, args.g_layers, args.h_layers, args.appendPosVec, args.batchNorm, args.layerNorm)
+modelBuilder = ModelBuilder(batch_size, macro_batch_size, question_dim, obj_dim, dictSize, args.questionAwareContext, args.f_layers, args.f_inner_layers, args.g_layers, args.h_layers, args.appendPosVec, args.batchNorm, args.layerNorm, args.weightPenalty)
 
 (inputContext, inputContextLengths, inputContextSentenceLengths, inputQuestion, inputQuestionLengths, objects, question) = modelBuilder.buildWordProcessorLSTMs()
 
